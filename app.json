@@ -1,36 +1,43 @@
 {
   "expo": {
-    "name": "reportsApp",
-    "slug": "reportsApp",
-    "version": "1.0.0",
+    "name": "RISE Reports",
+    "slug": "rise-reports",
+    "version": "1.0.1",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "reportsapp",
+    "icon": "./assets/images/1-7ffa7b50.png",
+    "scheme": "rise-reports",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.rise.reports",
+      "buildNumber": "3",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "foregroundImage": "./assets/images/1-7ffa7b50.png",
+        "backgroundImage": "./assets/images/1-7ffa7b50.png",
+        "monochromeImage": "./assets/images/1-7ffa7b50.png"
       },
+      "package": "com.rise.reports",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/1-7ffa7b50.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/1-7ffa7b50.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
@@ -43,6 +50,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "2b2f2903-5994-4318-bc2d-0e470ffe78c3"
+      }
     }
   }
 }

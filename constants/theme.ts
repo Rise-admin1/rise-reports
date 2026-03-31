@@ -1,29 +1,69 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * RISE brand color scheme: red accent, white text on dark, black background (dark mode).
+ * Light mode: white background, red accent, dark text. Dark mode: black background, red accent, white text.
  */
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+/** RISE brand red (primary accent from logo) */
+const riseRed = '#C41E3A';
+/** Dark gray from logo (brain, base, lines, subtext) */
+const riseDarkGray = '#2D2D2D';
+const white = '#FFFFFF';
+const black = '#000000';
 
 export const Colors = {
   light: {
     text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
+    background: white,
+    tint: riseRed,
+    /** Text on red/dark (primary buttons) */
+    tintText: white,
+    icon: riseDarkGray,
     tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    tabIconSelected: riseRed,
+    /** Card/surface background */
+    card: white,
+    border: '#E5E5E5',
+    /** Hover/pressed state */
+    buttonHover: '#FDE8EC',
+    buttonHoverText: '#11181C',
+    /** Inactive/outline button */
+    buttonSecondary: white,
+    buttonSecondaryText: '#11181C',
+    /** Status/semantic */
+    success: '#4CAF50',
+    successMuted: '#E8F5E9',
+    successText: '#2E7D32',
+    error: '#C41E3A',
+    errorMuted: '#FFEBEE',
+    errorText: '#B91C1C',
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
+    text: white,
+    background: black,
+    tint: riseRed,
+    /** Text on red (primary buttons) */
+    tintText: white,
     icon: '#9BA1A6',
     tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    tabIconSelected: riseRed,
+    /** Card/surface (dark gray from logo) */
+    card: riseDarkGray,
+    border: '#404040',
+    /** Hover/pressed state */
+    buttonHover: '#3D3D3D',
+    buttonHoverText: white,
+    /** Inactive/outline button */
+    buttonSecondary: riseDarkGray,
+    buttonSecondaryText: white,
+    /** Status/semantic */
+    success: '#4CAF50',
+    successMuted: '#2E3D2E',
+    successText: '#81C784',
+    error: riseRed,
+    errorMuted: '#3D2A2A',
+    errorText: '#EF9A9A',
   },
 };
 
