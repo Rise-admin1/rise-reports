@@ -1,4 +1,10 @@
-import { FunyulaReportsResponse, RiseReportsResponse, VolunteersResponse } from '@/types/reports';
+import {
+  ExpoRegistrationsResponse,
+  FunyulaReportsResponse,
+  RiseReportItem,
+  RiseReportsResponse,
+  VolunteersResponse,
+} from '@/types/reports';
 import { Task, TaskAsset, TaskAssignee, TaskStatus } from '@/types/tasks';
 
 const API_BASE_URL = 'https://future.funyula.com/api';
@@ -36,12 +42,59 @@ export async function fetchFunyulaVolunteers(offset: number = 0, limit: number =
     }
 
     const data: VolunteersResponse = await response.json();
+    console.log(data,'data');
     return data;
   } catch (error) {
     throw new Error(
       `Failed to fetch Funyula volunteers: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
   }
+}
+
+export async function fetchExpoRegistrations(
+  offset: number = 0,
+  limit: number = 10
+): Promise<ExpoRegistrationsResponse> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/volunteer/expo-register/all?offset=${offset}&limit=${limit}`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data: ExpoRegistrationsResponse = await response.json();
+    return data;
+  } catch (error) {
+    throw new Error(
+      `Failed to fetch Samia women registrations: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+async function throwIfDeleteFailed(response: Response, fallback: string): Promise<void> {
+  if (response.ok) return;
+  const text = await response.text();
+  let message = fallback;
+  try {
+    const j = JSON.parse(text) as { message?: string };
+    if (j?.message) message = j.message;
+  } catch {
+    message = `${fallback} (${response.status})`;
+  }
+  throw new Error(message);
+}
+
+export async function deleteVolunteerById(id: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/volunteer/entry/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+  await throwIfDeleteFailed(response, 'Failed to delete volunteer');
+}
+
+export async function deleteExpoRegistrationById(id: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/volunteer/expo-register/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+  await throwIfDeleteFailed(response, 'Failed to delete registration');
 }
 
 export async function fetchRiseProfileReports(
@@ -82,6 +135,138 @@ export async function fetchRiseInvestors(
       `Failed to fetch RISE investors: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
   }
+}
+
+/**
+ * Chunk size for walking paginated endpoints until every row is loaded (PDF export).
+ * Loops until the server reports no more pages — not a cap on exported rows.
+ */
+const PDF_FETCH_CHUNK = 500;
+const PDF_FETCH_MAX_ITERATIONS = 10_000;
+
+/** Merge every page of Funyula contributions into one payload (summary from first page). */
+export async function fetchAllFunyulaReportsForPdf(): Promise<FunyulaReportsResponse> {
+  const first = await fetchFunyulaReports(1, PDF_FETCH_CHUNK);
+  const payments = [...first.data.payments];
+  let page = first.data.pagination.currentPage;
+  let hasNext = first.data.pagination.hasNextPage;
+  let iterations = 0;
+
+  while (hasNext && iterations < PDF_FETCH_MAX_ITERATIONS) {
+    iterations += 1;
+    page += 1;
+    const chunk = await fetchFunyulaReports(page, PDF_FETCH_CHUNK);
+    payments.push(...chunk.data.payments);
+    hasNext = chunk.data.pagination.hasNextPage;
+  }
+
+  const totalCount = first.data.pagination.totalCount;
+  return {
+    ...first,
+    data: {
+      ...first.data,
+      payments,
+      pagination: {
+        ...first.data.pagination,
+        currentPage: 1,
+        totalPages: 1,
+        totalCount,
+        limit: payments.length,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      },
+    },
+  };
+}
+
+/** Merge every offset window until all volunteers are loaded. */
+export async function fetchAllFunyulaVolunteersForPdf(): Promise<VolunteersResponse> {
+  const first = await fetchFunyulaVolunteers(0, PDF_FETCH_CHUNK);
+  const totalCount = first.pagination.totalCount;
+  const merged: VolunteersResponse['data'] = [...first.data];
+  let offset = first.pagination.offset + first.pagination.limit;
+  let iterations = 0;
+
+  while (merged.length < totalCount && iterations < PDF_FETCH_MAX_ITERATIONS) {
+    iterations += 1;
+    const chunk = await fetchFunyulaVolunteers(offset, PDF_FETCH_CHUNK);
+    if (chunk.data.length === 0) break;
+    merged.push(...chunk.data);
+    offset += chunk.pagination.limit;
+  }
+
+  return {
+    ...first,
+    data: merged,
+    pagination: {
+      offset: 0,
+      limit: merged.length,
+      totalCount,
+    },
+  };
+}
+
+/** Merge every offset window until all expo registrations are loaded. */
+export async function fetchAllExpoRegistrationsForPdf(): Promise<ExpoRegistrationsResponse> {
+  const first = await fetchExpoRegistrations(0, PDF_FETCH_CHUNK);
+  const totalCount = first.pagination.totalCount;
+  const merged: ExpoRegistrationsResponse['data'] = [...first.data];
+  let offset = first.pagination.offset + first.pagination.limit;
+  let iterations = 0;
+
+  while (merged.length < totalCount && iterations < PDF_FETCH_MAX_ITERATIONS) {
+    iterations += 1;
+    const chunk = await fetchExpoRegistrations(offset, PDF_FETCH_CHUNK);
+    if (chunk.data.length === 0) break;
+    merged.push(...chunk.data);
+    offset += chunk.pagination.limit;
+  }
+
+  return {
+    ...first,
+    data: merged,
+    pagination: {
+      offset: 0,
+      limit: merged.length,
+      totalCount,
+    },
+  };
+}
+
+async function fetchAllRiseReportPages(
+  fetchPage: (page: number, limit: number) => Promise<RiseReportsResponse>
+): Promise<RiseReportsResponse> {
+  const first = await fetchPage(1, PDF_FETCH_CHUNK);
+  const merged: RiseReportItem[] = [...first.data];
+  const totalPages = first.pagination.totalPages;
+  let page = 1;
+  let iterations = 0;
+
+  while (page < totalPages && iterations < PDF_FETCH_MAX_ITERATIONS) {
+    iterations += 1;
+    page += 1;
+    const chunk = await fetchPage(page, PDF_FETCH_CHUNK);
+    merged.push(...chunk.data);
+  }
+
+  const total = first.pagination.total;
+  return {
+    data: merged,
+    pagination: {
+      page: 1,
+      limit: merged.length,
+      total,
+      totalPages: 1,
+    },
+  };
+}
+
+export async function fetchAllRiseProfileReportsForPdf(): Promise<RiseReportsResponse> {
+  return fetchAllRiseReportPages(fetchRiseProfileReports);
+}
+
+export async function fetchAllRiseInvestorsForPdf(): Promise<RiseReportsResponse> {
+  return fetchAllRiseReportPages(fetchRiseInvestors);
 }
 
 type TaskPagination = {
@@ -136,8 +321,16 @@ export async function createTask(payload: {
   const response = await fetch(`${API_BASE_URL}/rise-reports/create-task`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      title: payload.title,
+      description: payload.description,
+      asset: payload.asset,
+      assignedTo: payload.assignedTo,
+      status: payload.status,
+    }),
   });
+  console.log(response,'response');
+  
 
   if (!response.ok) {
     throw new Error(`HTTP error! status: ${response.status}`);

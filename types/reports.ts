@@ -74,6 +74,7 @@ export interface Volunteer {
   subLocation: string;
   pollingStation: string;
   phone: string;
+  createdAt: string;
 }
 
 export interface VolunteerPagination {
@@ -84,5 +85,23 @@ export interface VolunteerPagination {
 
 export interface VolunteersResponse {
   data: Volunteer[];
+  pagination: VolunteerPagination;
+}
+
+export interface ExpoRegistration {
+  id: string;
+  groupName: string;
+  designation: string;
+  groupLeaderName: string;
+  yourName: string;
+  idNumber: string;
+  phoneNumber: string;
+  isVerified: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExpoRegistrationsResponse {
+  data: ExpoRegistration[];
   pagination: VolunteerPagination;
 }

@@ -3,19 +3,42 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { fetchFunyulaReports, fetchFunyulaVolunteers, fetchRiseInvestors, fetchRiseProfileReports } from '@/services/api';
 import {
+  deleteExpoRegistrationById,
+  deleteVolunteerById,
+  fetchAllExpoRegistrationsForPdf,
+  fetchAllFunyulaReportsForPdf,
+  fetchAllFunyulaVolunteersForPdf,
+  fetchAllRiseInvestorsForPdf,
+  fetchAllRiseProfileReportsForPdf,
+  fetchExpoRegistrations,
+  fetchFunyulaReports,
+  fetchFunyulaVolunteers,
+  fetchRiseInvestors,
+  fetchRiseProfileReports,
+} from '@/services/api';
+import {
+  ExpoRegistration,
+  ExpoRegistrationsResponse,
   FunyulaReportsResponse,
   Payment,
-  Volunteer,
   RiseReportItem,
   RiseReportsResponse,
+  Volunteer,
   VolunteersResponse,
 } from '@/types/reports';
+import {
+  buildFunyulaContributionsPdfHtml,
+  buildFunyulaVolunteersPdfHtml,
+  buildRiseReportPdfHtml,
+  buildSamiaWomenPdfHtml,
+  exportHtmlToPdf,
+} from '@/utils/reportPdf';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Linking,
   ScrollView,
   StyleSheet,
@@ -28,28 +51,33 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function HomeScreen() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedReportType, setSelectedReportType] = useState<'funyula' | 'rise' | null>(null);
-  const [funyulaReportType, setFunyulaReportType] = useState<'contributions' | 'volunteer' | null>(null);
+  const [funyulaReportType, setFunyulaReportType] = useState<'contributions' | 'volunteer' | 'samia-women' | null>(
+    null
+  );
   const [reportsData, setReportsData] = useState<FunyulaReportsResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [showSuccessOnly, setShowSuccessOnly] = useState(false);
   const [phoneSearch, setPhoneSearch] = useState('');
 
   const [volunteersData, setVolunteersData] = useState<VolunteersResponse | null>(null);
   const [volunteersLoading, setVolunteersLoading] = useState(false);
-  const [volunteersLoadingMore, setVolunteersLoadingMore] = useState(false);
   const [volunteersError, setVolunteersError] = useState<string | null>(null);
+  const [volunteersPage, setVolunteersPage] = useState(1);
+  const [expoRegistrationsData, setExpoRegistrationsData] = useState<ExpoRegistrationsResponse | null>(null);
+  const [expoRegistrationsLoading, setExpoRegistrationsLoading] = useState(false);
+  const [expoRegistrationsError, setExpoRegistrationsError] = useState<string | null>(null);
+  const [expoPage, setExpoPage] = useState(1);
+  const [deletingVolunteerId, setDeletingVolunteerId] = useState<string | null>(null);
+  const [deletingExpoId, setDeletingExpoId] = useState<string | null>(null);
 
   const [riseReportType, setRiseReportType] = useState<'profile-reports' | 'rise-investors' | null>(null);
   const [riseData, setRiseData] = useState<RiseReportsResponse | null>(null);
   const [riseLoading, setRiseLoading] = useState(false);
-  const [riseLoadingMore, setRiseLoadingMore] = useState(false);
   const [riseError, setRiseError] = useState<string | null>(null);
-  const [risePage, setRisePage] = useState(1);
   const riseLimit = 10;
+  const [pdfExporting, setPdfExporting] = useState(false);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const backgroundColor = colors.background;
@@ -63,6 +91,10 @@ export default function HomeScreen() {
       setError(null);
       setVolunteersData(null);
       setVolunteersError(null);
+      setVolunteersPage(1);
+      setExpoRegistrationsData(null);
+      setExpoRegistrationsError(null);
+      setExpoPage(1);
       setRiseReportType(null);
       setRiseData(null);
       setRiseError(null);
@@ -72,6 +104,10 @@ export default function HomeScreen() {
       setError(null);
       setVolunteersData(null);
       setVolunteersError(null);
+      setVolunteersPage(1);
+      setExpoRegistrationsData(null);
+      setExpoRegistrationsError(null);
+      setExpoPage(1);
       setRiseReportType(null);
       setRiseData(null);
       setRiseError(null);
@@ -84,7 +120,6 @@ export default function HomeScreen() {
     try {
       const data = await fetchFunyulaReports(nextPage, limit);
       setReportsData(data);
-      setPage(nextPage);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load reports');
     } finally {
@@ -92,121 +127,114 @@ export default function HomeScreen() {
     }
   };
 
-  const loadMoreFunyulaReports = async () => {
-    if (loadingMore || loading) return;
-    if (!reportsData?.data.pagination.hasNextPage) return;
-
-    const nextPage = page + 1;
-    setLoadingMore(true);
-    setError(null);
-    try {
-      const data = await fetchFunyulaReports(nextPage, limit);
-      setReportsData((prev) => {
-        if (!prev || !prev.data) return data;
-        return {
-          ...data,
-          data: {
-            ...data.data,
-            payments: [...prev.data.payments, ...data.data.payments],
-          },
-        };
-      });
-      setPage(nextPage);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load more reports');
-    } finally {
-      setLoadingMore(false);
-    }
-  };
-
-  const loadVolunteers = async ({ nextOffset }: { nextOffset: number }) => {
-    const isLoadMore = nextOffset > 0;
-    if (isLoadMore) {
-      setVolunteersLoadingMore(true);
-    } else {
-      setVolunteersLoading(true);
-    }
+  const loadVolunteersPage = async (nextPage: number) => {
+    if (nextPage < 1) return;
+    setVolunteersLoading(true);
     setVolunteersError(null);
-
     try {
-      const data = await fetchFunyulaVolunteers(nextOffset, limit);
-      if (nextOffset === 0) {
-        setVolunteersData(data);
-      } else {
-        setVolunteersData((prev) =>
-          prev
-            ? {
-                ...data,
-                data: [...prev.data, ...data.data],
-              }
-            : data
-        );
-      }
+      const offset = (nextPage - 1) * limit;
+      const data = await fetchFunyulaVolunteers(offset, limit);
+      setVolunteersData(data);
+      setVolunteersPage(nextPage);
     } catch (err) {
       setVolunteersError(err instanceof Error ? err.message : 'Failed to load Funyula volunteers');
     } finally {
       setVolunteersLoading(false);
-      setVolunteersLoadingMore(false);
     }
   };
 
-  const loadMoreVolunteers = () => {
-    if (!volunteersData || volunteersLoadingMore || volunteersLoading) return;
-    const { offset, limit: pageLimit, totalCount } = volunteersData.pagination;
-    const nextOffset = offset + pageLimit;
-    if (nextOffset >= totalCount) return;
-    loadVolunteers({ nextOffset });
+  const loadExpoPage = async (nextPage: number) => {
+    if (nextPage < 1) return;
+    setExpoRegistrationsLoading(true);
+    setExpoRegistrationsError(null);
+    try {
+      const offset = (nextPage - 1) * limit;
+      const data = await fetchExpoRegistrations(offset, limit);
+      setExpoRegistrationsData(data);
+      setExpoPage(nextPage);
+    } catch (err) {
+      setExpoRegistrationsError(err instanceof Error ? err.message : 'Failed to load Samia women registrations');
+    } finally {
+      setExpoRegistrationsLoading(false);
+    }
+  };
+
+  const confirmDeleteVolunteer = (volunteer: Volunteer) => {
+    Alert.alert('Delete volunteer', `Remove ${volunteer.fullName}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          void (async () => {
+            if (!volunteersData) return;
+            const wasOnlyOnPage = volunteersData.data.length === 1;
+            const pageAfterDelete = wasOnlyOnPage && volunteersPage > 1 ? volunteersPage - 1 : volunteersPage;
+            setDeletingVolunteerId(volunteer.id);
+            try {
+              await deleteVolunteerById(volunteer.id);
+              await loadVolunteersPage(pageAfterDelete);
+            } catch (err) {
+              Alert.alert('Delete failed', err instanceof Error ? err.message : 'Unknown error');
+            } finally {
+              setDeletingVolunteerId(null);
+            }
+          })();
+        },
+      },
+    ]);
+  };
+
+  const confirmDeleteExpoRegistration = (registration: ExpoRegistration) => {
+    Alert.alert('Delete registration', `Remove registration for ${registration.groupName}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          void (async () => {
+            if (!expoRegistrationsData) return;
+            const wasOnlyOnPage = expoRegistrationsData.data.length === 1;
+            const pageAfterDelete = wasOnlyOnPage && expoPage > 1 ? expoPage - 1 : expoPage;
+            setDeletingExpoId(registration.id);
+            try {
+              await deleteExpoRegistrationById(registration.id);
+              await loadExpoPage(pageAfterDelete);
+            } catch (err) {
+              Alert.alert('Delete failed', err instanceof Error ? err.message : 'Unknown error');
+            } finally {
+              setDeletingExpoId(null);
+            }
+          })();
+        },
+      },
+    ]);
   };
 
   const handleMenuItemSelect = (menuItem: 'funyula' | 'rise') => {
     setSelectedReportType(menuItem);
   };
 
-  const loadRiseReport = async (type: 'profile-reports' | 'rise-investors', page: number = 1) => {
-    const isLoadMore = page > 1;
-    if (isLoadMore) {
-      setRiseLoadingMore(true);
-    } else {
-      setRiseLoading(true);
-    }
+  const loadRiseReport = async (type: 'profile-reports' | 'rise-investors', nextPage: number = 1) => {
+    if (nextPage < 1) return;
+    setRiseLoading(true);
     setRiseError(null);
     try {
       const data =
         type === 'profile-reports'
-          ? await fetchRiseProfileReports(page, riseLimit)
-          : await fetchRiseInvestors(page, riseLimit);
-      if (page === 1) {
-        setRiseData(data);
-        setRisePage(1);
-      } else {
-        setRiseData((prev) =>
-          prev
-            ? {
-                ...data,
-                data: [...prev.data, ...data.data],
-              }
-            : data
-        );
-        setRisePage(page);
-      }
+          ? await fetchRiseProfileReports(nextPage, riseLimit)
+          : await fetchRiseInvestors(nextPage, riseLimit);
+      setRiseData(data);
     } catch (err) {
       setRiseError(err instanceof Error ? err.message : 'Failed to load RISE report');
     } finally {
       setRiseLoading(false);
-      setRiseLoadingMore(false);
     }
   };
 
   const handleRiseReportTypeSelect = (type: 'profile-reports' | 'rise-investors') => {
     setRiseReportType(type);
     loadRiseReport(type, 1);
-  };
-
-  const loadMoreRiseReport = () => {
-    if (!riseReportType || !riseData || riseLoadingMore || riseLoading) return;
-    const { page, totalPages } = riseData.pagination;
-    if (page >= totalPages) return;
-    loadRiseReport(riseReportType, page + 1);
   };
 
   const formatRiseDate = (dateString: string) => {
@@ -230,6 +258,19 @@ export default function HomeScreen() {
 
   const formatAmount = (amount: string) => {
     return `KES ${parseFloat(amount).toLocaleString()}`;
+  };
+
+  const runPdfExport = async (fileBase: string, buildHtml: () => Promise<string>) => {
+    if (pdfExporting) return;
+    try {
+      setPdfExporting(true);
+      const html = await buildHtml();
+      await exportHtmlToPdf(html, fileBase);
+    } catch (err) {
+      Alert.alert('PDF export failed', err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setPdfExporting(false);
+    }
   };
 
   const basePayments =
@@ -294,16 +335,23 @@ export default function HomeScreen() {
                 setReportsData(null);
                 setError(null);
                 setLoading(false);
-                setLoadingMore(false);
                 setVolunteersData(null);
                 setVolunteersError(null);
                 setVolunteersLoading(false);
-                setVolunteersLoadingMore(false);
+                setVolunteersPage(1);
+                setExpoRegistrationsData(null);
+                setExpoRegistrationsError(null);
+                setExpoRegistrationsLoading(false);
+                setExpoPage(1);
               }}
               style={styles.riseBackRow}>
               <MaterialIcons name="arrow-back" size={24} color={colors.text} />
               <ThemedText style={styles.riseBackText}>
-                {funyulaReportType === 'contributions' ? 'Funyula Contributions' : 'Funyula Volunteer'}
+                {funyulaReportType === 'contributions'
+                  ? 'Funyula Contributions'
+                  : funyulaReportType === 'volunteer'
+                    ? 'Funyula Volunteer'
+                    : 'Samia Women Registration'}
               </ThemedText>
             </TouchableOpacity>
           </View>
@@ -334,7 +382,8 @@ export default function HomeScreen() {
               style={[styles.riseReportCard, { backgroundColor: cardBackground, borderColor }]}
               onPress={() => {
                 setFunyulaReportType('volunteer');
-                loadVolunteers({ nextOffset: 0 });
+                setVolunteersPage(1);
+                loadVolunteersPage(1);
               }}
               activeOpacity={0.85}>
               <View style={styles.riseReportCardContent}>
@@ -346,11 +395,55 @@ export default function HomeScreen() {
               </View>
               <MaterialIcons name="chevron-right" size={24} color={colors.icon} />
             </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.riseReportCard, { backgroundColor: cardBackground, borderColor }]}
+              onPress={() => {
+                setFunyulaReportType('samia-women');
+                setExpoPage(1);
+                loadExpoPage(1);
+              }}
+              activeOpacity={0.85}>
+              <View style={styles.riseReportCardContent}>
+                <MaterialIcons name="person-add-alt-1" size={32} color={colors.tint} />
+                <ThemedText type="subtitle" style={styles.riseReportCardTitle}>
+                  Samia Women Registration
+                </ThemedText>
+                <ThemedText style={styles.riseReportCardDesc}>GET /volunteer/expo-register/all</ThemedText>
+              </View>
+              <MaterialIcons name="chevron-right" size={24} color={colors.icon} />
+            </TouchableOpacity>
           </View>
         )}
 
         {!loading && !error && selectedReportType === 'funyula' && funyulaReportType === 'contributions' && reportsData && (
           <>
+            <TouchableOpacity
+              style={[
+                styles.pdfDownloadButton,
+                {
+                  borderColor: colors.tint,
+                  backgroundColor: colors.buttonSecondary,
+                  opacity: pdfExporting ? 0.65 : 1,
+                },
+              ]}
+              onPress={() =>
+                runPdfExport('funyula_contributions', async () => {
+                  const data = await fetchAllFunyulaReportsForPdf();
+                  return buildFunyulaContributionsPdfHtml(data);
+                })
+              }
+              activeOpacity={0.85}
+              disabled={pdfExporting}
+              accessibilityLabel="Download contributions report as PDF">
+              {pdfExporting ? (
+                <ActivityIndicator size="small" color={colors.tint} />
+              ) : (
+                <MaterialIcons name="picture-as-pdf" size={22} color={colors.tint} />
+              )}
+              <ThemedText style={[styles.pdfDownloadButtonText, { color: colors.tint }]}>
+                Download as PDF
+              </ThemedText>
+            </TouchableOpacity>
             <View style={[styles.summaryGrid, { gap: 16 }]}>
               <View style={[styles.summaryCard, { backgroundColor: cardBackground, borderColor }]}>
                 <View style={styles.summaryIconContainer}>
@@ -485,10 +578,22 @@ export default function HomeScreen() {
                   </ThemedText>
                 </View>
               </View>
-              {displayedPayments.map((payment: Payment) => (
+              {displayedPayments.map((payment: Payment) => {
+                const paymentRowId =
+                  (reportsData.data.pagination.currentPage - 1) * limit +
+                  Math.max(0, basePayments.indexOf(payment)) +
+                  1;
+                return (
                 <View
                   key={payment.id}
                   style={[styles.paymentCard, { backgroundColor: cardBackground, borderColor }]}>
+                  <View style={styles.cardIdRow}>
+                    <View style={[styles.cardIdBadge, { backgroundColor: colors.buttonSecondary, borderColor }]}>
+                      <ThemedText type="defaultSemiBold" style={[styles.cardIdText, { color: colors.tint }]}>
+                        ID {paymentRowId}
+                      </ThemedText>
+                    </View>
+                  </View>
                   <View style={styles.paymentHeader}>
                     <View style={styles.paymentHeaderLeft}>
                       <View
@@ -563,54 +668,62 @@ export default function HomeScreen() {
                     </View>
                   </View>
                 </View>
-              ))}
+              );
+              })}
             </View>
 
             <View style={[styles.paginationCard, { backgroundColor: cardBackground, borderColor }]}>
               <View style={styles.paginationRow}>
-                <MaterialIcons name="info-outline" size={20} color={colors.icon} />
-                <ThemedText style={styles.paginationText}>
-                  Page {reportsData.data.pagination.currentPage} of{' '}
-                  {reportsData.data.pagination.totalPages}
-                </ThemedText>
-              </View>
-              <View style={styles.paginationRow}>
                 <MaterialIcons name="list" size={20} color={colors.icon} />
                 <ThemedText style={styles.paginationText}>
-                  {reportsData.data.pagination.totalCount} total transactions
-                </ThemedText>
-              </View>
-              <View style={styles.paginationRow}>
-                <MaterialIcons
-                  name={reportsData.data.pagination.hasNextPage ? 'arrow-forward' : 'check'}
-                  size={20}
-                  color={colors.icon}
-                />
-                <ThemedText style={styles.paginationText}>
-                  {reportsData.data.pagination.hasNextPage ? 'More pages available' : 'Last page'}
+                  {reportsData.data.pagination.totalCount} total transactions · {limit} per page
                 </ThemedText>
               </View>
             </View>
 
-            {reportsData.data.pagination.hasNextPage && (
+            <View style={styles.paginationNav}>
               <TouchableOpacity
-                style={[styles.loadMoreButton, { backgroundColor: colors.tint }]}
-                onPress={loadMoreFunyulaReports}
-                activeOpacity={0.85}
-                disabled={loadingMore}>
-                {loadingMore ? (
-                  <View style={styles.loadMoreInner}>
-                    <ActivityIndicator size="small" color={colors.tintText} />
-                    <ThemedText style={[styles.loadMoreText, { color: colors.tintText }]}>Loading more…</ThemedText>
-                  </View>
-                ) : (
-                  <View style={styles.loadMoreInner}>
-                    <MaterialIcons name="expand-more" size={20} color={colors.tintText} />
-                    <ThemedText style={[styles.loadMoreText, { color: colors.tintText }]}>Load more</ThemedText>
-                  </View>
-                )}
+                style={[
+                  styles.paginationNavButton,
+                  {
+                    backgroundColor: colors.buttonSecondary,
+                    borderColor,
+                    opacity:
+                      loading || reportsData.data.pagination.currentPage <= 1 ? 0.45 : 1,
+                  },
+                ]}
+                onPress={() =>
+                  loadFunyulaReports({ nextPage: reportsData.data.pagination.currentPage - 1 })
+                }
+                disabled={loading || reportsData.data.pagination.currentPage <= 1}
+                accessibilityLabel="Previous page">
+                <MaterialIcons name="chevron-left" size={22} color={colors.text} />
+                <ThemedText style={styles.paginationNavLabel}>Previous</ThemedText>
               </TouchableOpacity>
-            )}
+              <View style={styles.paginationNavCenter}>
+                <ThemedText style={styles.paginationNavPageText}>
+                  Page {reportsData.data.pagination.currentPage} of {reportsData.data.pagination.totalPages}
+                </ThemedText>
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.paginationNavButton,
+                  {
+                    backgroundColor: colors.buttonSecondary,
+                    borderColor,
+                    opacity:
+                      loading || !reportsData.data.pagination.hasNextPage ? 0.45 : 1,
+                  },
+                ]}
+                onPress={() =>
+                  loadFunyulaReports({ nextPage: reportsData.data.pagination.currentPage + 1 })
+                }
+                disabled={loading || !reportsData.data.pagination.hasNextPage}
+                accessibilityLabel="Next page">
+                <ThemedText style={styles.paginationNavLabel}>Next</ThemedText>
+                <MaterialIcons name="chevron-right" size={22} color={colors.text} />
+              </TouchableOpacity>
+            </View>
           </>
         )}
 
@@ -631,76 +744,332 @@ export default function HomeScreen() {
                 )}
                 {volunteersData && (
                   <>
+                    <TouchableOpacity
+                      style={[
+                        styles.pdfDownloadButton,
+                        {
+                          borderColor: colors.tint,
+                          backgroundColor: colors.buttonSecondary,
+                          opacity: pdfExporting ? 0.65 : 1,
+                        },
+                      ]}
+                      onPress={() =>
+                        runPdfExport('funyula_volunteers', async () => {
+                          const data = await fetchAllFunyulaVolunteersForPdf();
+                          return buildFunyulaVolunteersPdfHtml(data);
+                        })
+                      }
+                      activeOpacity={0.85}
+                      disabled={pdfExporting}
+                      accessibilityLabel="Download volunteers report as PDF">
+                      {pdfExporting ? (
+                        <ActivityIndicator size="small" color={colors.tint} />
+                      ) : (
+                        <MaterialIcons name="picture-as-pdf" size={22} color={colors.tint} />
+                      )}
+                      <ThemedText style={[styles.pdfDownloadButtonText, { color: colors.tint }]}>
+                        Download as PDF
+                      </ThemedText>
+                    </TouchableOpacity>
                     <View style={styles.section}>
-                      {volunteersData.data.map((volunteer: Volunteer) => (
-                        <View
-                          key={volunteer.id}
-                          style={[styles.riseItemCard, { backgroundColor: cardBackground, borderColor }]}>
-                          <View style={styles.volunteerField}>
-                            <ThemedText style={styles.volunteerLabel}>Full Name</ThemedText>
-                            <ThemedText style={styles.volunteerValuePrimary}>
-                              {volunteer.fullName}
-                            </ThemedText>
+                      {volunteersData.data.map((volunteer: Volunteer, vIndex: number) => {
+                        const volunteerRowId = (volunteersPage - 1) * limit + vIndex + 1;
+                        return (
+                          <View
+                            key={volunteer.id}
+                            style={[styles.riseItemCard, { backgroundColor: cardBackground, borderColor }]}>
+                            <View style={styles.cardIdRow}>
+                              <View style={[styles.cardIdBadge, { backgroundColor: colors.buttonSecondary, borderColor }]}>
+                                <ThemedText type="defaultSemiBold" style={[styles.cardIdText, { color: colors.tint }]}>
+                                  ID {volunteerRowId}
+                                </ThemedText>
+                              </View>
+                            </View>
+                            <View style={styles.volunteerField}>
+                              <ThemedText style={styles.volunteerLabel}>Full Name</ThemedText>
+                              <ThemedText style={styles.volunteerValuePrimary}>
+                                {volunteer.fullName}
+                              </ThemedText>
+                            </View>
+                            <View style={styles.volunteerField}>
+                              <ThemedText style={styles.volunteerLabel}>Ward</ThemedText>
+                              <ThemedText style={styles.volunteerValueSecondary}>{volunteer.ward}</ThemedText>
+                            </View>
+                            <View style={styles.volunteerField}>
+                              <ThemedText style={styles.volunteerLabel}>Location</ThemedText>
+                              <ThemedText style={styles.volunteerValueSecondary}>{volunteer.location}</ThemedText>
+                            </View>
+                            <View style={styles.volunteerField}>
+                              <ThemedText style={styles.volunteerLabel}>Sub Location</ThemedText>
+                              <ThemedText style={styles.volunteerValueSecondary}>{volunteer.subLocation}</ThemedText>
+                            </View>
+                            <View style={styles.volunteerField}>
+                              <ThemedText style={styles.volunteerLabel}>Polling Station</ThemedText>
+                              <ThemedText style={styles.volunteerValueSecondary}>{volunteer.pollingStation}</ThemedText>
+                            </View>
+                            <View style={styles.volunteerField}>
+                              <ThemedText style={styles.volunteerLabel}>Phone</ThemedText>
+                              <ThemedText style={styles.volunteerValueSecondary}>{volunteer.phone}</ThemedText>
+                            </View>
+                            <View style={styles.volunteerField}>
+                              <ThemedText style={styles.volunteerLabel}>Date and Time Registered</ThemedText>
+                              <ThemedText style={styles.volunteerValueSecondary}>
+                                {formatRiseDate(volunteer.createdAt)}
+                              </ThemedText>
+                            </View>
+                            <TouchableOpacity
+                              style={[styles.cardDeleteButton, { borderColor: colors.error }]}
+                              onPress={() => confirmDeleteVolunteer(volunteer)}
+                              disabled={deletingVolunteerId !== null || volunteersLoading}
+                              activeOpacity={0.8}
+                              accessibilityLabel="Delete volunteer">
+                              {deletingVolunteerId === volunteer.id ? (
+                                <ActivityIndicator size="small" color={colors.error} />
+                              ) : (
+                                <>
+                                  <MaterialIcons name="delete-outline" size={20} color={colors.error} />
+                                  <ThemedText style={[styles.cardDeleteLabel, { color: colors.error }]}>
+                                    Delete
+                                  </ThemedText>
+                                </>
+                              )}
+                            </TouchableOpacity>
                           </View>
-                          <View style={styles.volunteerField}>
-                            <ThemedText style={styles.volunteerLabel}>Ward</ThemedText>
-                            <ThemedText style={styles.volunteerValueSecondary}>{volunteer.ward}</ThemedText>
-                          </View>
-                          <View style={styles.volunteerField}>
-                            <ThemedText style={styles.volunteerLabel}>Location</ThemedText>
-                            <ThemedText style={styles.volunteerValueSecondary}>{volunteer.location}</ThemedText>
-                          </View>
-                          <View style={styles.volunteerField}>
-                            <ThemedText style={styles.volunteerLabel}>Sub Location</ThemedText>
-                            <ThemedText style={styles.volunteerValueSecondary}>{volunteer.subLocation}</ThemedText>
-                          </View>
-                          <View style={styles.volunteerField}>
-                            <ThemedText style={styles.volunteerLabel}>Polling Station</ThemedText>
-                            <ThemedText style={styles.volunteerValueSecondary}>{volunteer.pollingStation}</ThemedText>
-                          </View>
-                          <View style={styles.volunteerField}>
-                            <ThemedText style={styles.volunteerLabel}>Phone</ThemedText>
-                            <ThemedText style={styles.volunteerValueSecondary}>{volunteer.phone}</ThemedText>
-                          </View>
-                        </View>
-                      ))}
+                        );
+                      })}
                     </View>
                     <View style={[styles.paginationCard, { backgroundColor: cardBackground, borderColor }]}>
                       <View style={styles.paginationRow}>
-                        <MaterialIcons name="info-outline" size={20} color={colors.icon} />
-                        <ThemedText style={styles.paginationText}>
-                          Total {volunteersData.pagination.totalCount} volunteers
-                        </ThemedText>
-                      </View>
-                      <View style={styles.paginationRow}>
                         <MaterialIcons name="list" size={20} color={colors.icon} />
                         <ThemedText style={styles.paginationText}>
-                          Offset {volunteersData.pagination.offset} / Limit {volunteersData.pagination.limit}
+                          Total {volunteersData.pagination.totalCount} volunteers · {limit} per page
                         </ThemedText>
                       </View>
                     </View>
-                    {volunteersData.pagination.offset + volunteersData.pagination.limit <
-                      volunteersData.pagination.totalCount && (
-                        <TouchableOpacity
-                          style={[styles.loadMoreButton, { backgroundColor: colors.tint }]}
-                          onPress={loadMoreVolunteers}
-                          activeOpacity={0.85}
-                          disabled={volunteersLoadingMore}>
-                          {volunteersLoadingMore ? (
-                            <View style={styles.loadMoreInner}>
-                              <ActivityIndicator size="small" color={colors.tintText} />
-                              <ThemedText style={[styles.loadMoreText, { color: colors.tintText }]}>
-                                Loading more…
+                    {(() => {
+                      const vTotal = volunteersData.pagination.totalCount;
+                      const vPerPage = volunteersData.pagination.limit || limit;
+                      const vTotalPages = Math.max(1, Math.ceil(vTotal / vPerPage));
+                      return (
+                        <View style={styles.paginationNav}>
+                          <TouchableOpacity
+                            style={[
+                              styles.paginationNavButton,
+                              {
+                                backgroundColor: colors.buttonSecondary,
+                                borderColor,
+                                opacity: volunteersLoading || volunteersPage <= 1 ? 0.45 : 1,
+                              },
+                            ]}
+                            onPress={() => loadVolunteersPage(volunteersPage - 1)}
+                            disabled={volunteersLoading || volunteersPage <= 1}
+                            accessibilityLabel="Previous page">
+                            <MaterialIcons name="chevron-left" size={22} color={colors.text} />
+                            <ThemedText style={styles.paginationNavLabel}>Previous</ThemedText>
+                          </TouchableOpacity>
+                          <View style={styles.paginationNavCenter}>
+                            <ThemedText style={styles.paginationNavPageText}>
+                              Page {volunteersPage} of {vTotalPages}
+                            </ThemedText>
+                          </View>
+                          <TouchableOpacity
+                            style={[
+                              styles.paginationNavButton,
+                              {
+                                backgroundColor: colors.buttonSecondary,
+                                borderColor,
+                                opacity:
+                                  volunteersLoading || volunteersPage >= vTotalPages ? 0.45 : 1,
+                              },
+                            ]}
+                            onPress={() => loadVolunteersPage(volunteersPage + 1)}
+                            disabled={volunteersLoading || volunteersPage >= vTotalPages}
+                            accessibilityLabel="Next page">
+                            <ThemedText style={styles.paginationNavLabel}>Next</ThemedText>
+                            <MaterialIcons name="chevron-right" size={22} color={colors.text} />
+                          </TouchableOpacity>
+                        </View>
+                      );
+                    })()}
+                  </>
+                )}
+              </>
+            )}
+          </>
+        )}
+
+        {selectedReportType === 'funyula' && funyulaReportType === 'samia-women' && (
+          <>
+            {expoRegistrationsLoading && !expoRegistrationsData ? (
+              <View style={styles.centerContainer}>
+                <ActivityIndicator size="large" color={colors.tint} />
+                <ThemedText style={styles.loadingText}>Loading Samia women registrations…</ThemedText>
+              </View>
+            ) : (
+              <>
+                {expoRegistrationsError && (
+                  <View style={[styles.errorContainer, { backgroundColor: colors.errorMuted, borderColor: colors.error }]}>
+                    <MaterialIcons name="error-outline" size={24} color={colors.errorText} />
+                    <ThemedText style={[styles.errorText, { color: colors.errorText }]}>
+                      Error: {expoRegistrationsError}
+                    </ThemedText>
+                  </View>
+                )}
+                {expoRegistrationsData && (
+                  <>
+                    <TouchableOpacity
+                      style={[
+                        styles.pdfDownloadButton,
+                        {
+                          borderColor: colors.tint,
+                          backgroundColor: colors.buttonSecondary,
+                          opacity: pdfExporting ? 0.65 : 1,
+                        },
+                      ]}
+                      onPress={() =>
+                        runPdfExport('samia_women_registration', async () => {
+                          const data = await fetchAllExpoRegistrationsForPdf();
+                          return buildSamiaWomenPdfHtml(data);
+                        })
+                      }
+                      activeOpacity={0.85}
+                      disabled={pdfExporting}
+                      accessibilityLabel="Download Samia women registrations as PDF">
+                      {pdfExporting ? (
+                        <ActivityIndicator size="small" color={colors.tint} />
+                      ) : (
+                        <MaterialIcons name="picture-as-pdf" size={22} color={colors.tint} />
+                      )}
+                      <ThemedText style={[styles.pdfDownloadButtonText, { color: colors.tint }]}>
+                        Download as PDF
+                      </ThemedText>
+                    </TouchableOpacity>
+                    <View style={styles.section}>
+                      {expoRegistrationsData.data.map((registration: ExpoRegistration, eIndex: number) => {
+                        const expoRowId = (expoPage - 1) * limit + eIndex + 1;
+                        return (
+                        <View
+                          key={registration.id}
+                          style={[styles.riseItemCard, { backgroundColor: cardBackground, borderColor }]}>
+                          <View style={styles.cardIdRow}>
+                            <View style={[styles.cardIdBadge, { backgroundColor: colors.buttonSecondary, borderColor }]}>
+                              <ThemedText type="defaultSemiBold" style={[styles.cardIdText, { color: colors.tint }]}>
+                                ID {expoRowId}
                               </ThemedText>
                             </View>
-                          ) : (
-                            <View style={styles.loadMoreInner}>
-                              <MaterialIcons name="expand-more" size={20} color={colors.tintText} />
-                              <ThemedText style={[styles.loadMoreText, { color: colors.tintText }]}>Load more</ThemedText>
-                            </View>
-                          )}
-                        </TouchableOpacity>
-                      )}
+                          </View>
+                          <View style={styles.volunteerField}>
+                            <ThemedText style={styles.volunteerLabel}>Group Name</ThemedText>
+                            <ThemedText style={styles.volunteerValuePrimary}>{registration.groupName}</ThemedText>
+                          </View>
+                          <View style={styles.volunteerField}>
+                            <ThemedText style={styles.volunteerLabel}>Designation</ThemedText>
+                            <ThemedText style={styles.volunteerValueSecondary}>{registration.designation}</ThemedText>
+                          </View>
+                          <View style={styles.volunteerField}>
+                            <ThemedText style={styles.volunteerLabel}>Group Leader Name</ThemedText>
+                            <ThemedText style={styles.volunteerValueSecondary}>
+                              {registration.groupLeaderName}
+                            </ThemedText>
+                          </View>
+                          <View style={styles.volunteerField}>
+                            <ThemedText style={styles.volunteerLabel}>Your Name</ThemedText>
+                            <ThemedText style={styles.volunteerValueSecondary}>{registration.yourName}</ThemedText>
+                          </View>
+                          <View style={styles.volunteerField}>
+                            <ThemedText style={styles.volunteerLabel}>ID Number</ThemedText>
+                            <ThemedText style={styles.volunteerValueSecondary}>{registration.idNumber}</ThemedText>
+                          </View>
+                          <View style={styles.volunteerField}>
+                            <ThemedText style={styles.volunteerLabel}>Phone Number</ThemedText>
+                            <ThemedText style={styles.volunteerValueSecondary}>{registration.phoneNumber}</ThemedText>
+                          </View>
+                          <View style={styles.volunteerField}>
+                            <ThemedText style={styles.volunteerLabel}>Verified</ThemedText>
+                            <ThemedText style={styles.volunteerValueSecondary}>
+                              {registration.isVerified ? 'Yes' : 'No'}
+                            </ThemedText>
+                          </View>
+                          <View style={styles.volunteerField}>
+                            <ThemedText style={styles.volunteerLabel}>Date and Time Registered</ThemedText>
+                            <ThemedText style={styles.volunteerValueSecondary}>
+                              {formatRiseDate(registration.createdAt)}
+                            </ThemedText>
+                          </View>
+                          <TouchableOpacity
+                            style={[styles.cardDeleteButton, { borderColor: colors.error }]}
+                            onPress={() => confirmDeleteExpoRegistration(registration)}
+                            disabled={deletingExpoId !== null || expoRegistrationsLoading}
+                            activeOpacity={0.8}
+                            accessibilityLabel="Delete registration">
+                            {deletingExpoId === registration.id ? (
+                              <ActivityIndicator size="small" color={colors.error} />
+                            ) : (
+                              <>
+                                <MaterialIcons name="delete-outline" size={20} color={colors.error} />
+                                <ThemedText style={[styles.cardDeleteLabel, { color: colors.error }]}>
+                                  Delete
+                                </ThemedText>
+                              </>
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                      );
+                      })}
+                    </View>
+                    <View style={[styles.paginationCard, { backgroundColor: cardBackground, borderColor }]}>
+                      <View style={styles.paginationRow}>
+                        <MaterialIcons name="list" size={20} color={colors.icon} />
+                        <ThemedText style={styles.paginationText}>
+                          Total {expoRegistrationsData.pagination.totalCount} registrations · {limit} per page
+                        </ThemedText>
+                      </View>
+                    </View>
+                    {(() => {
+                      const eTotal = expoRegistrationsData.pagination.totalCount;
+                      const ePerPage = expoRegistrationsData.pagination.limit || limit;
+                      const eTotalPages = Math.max(1, Math.ceil(eTotal / ePerPage));
+                      return (
+                        <View style={styles.paginationNav}>
+                          <TouchableOpacity
+                            style={[
+                              styles.paginationNavButton,
+                              {
+                                backgroundColor: colors.buttonSecondary,
+                                borderColor,
+                                opacity: expoRegistrationsLoading || expoPage <= 1 ? 0.45 : 1,
+                              },
+                            ]}
+                            onPress={() => loadExpoPage(expoPage - 1)}
+                            disabled={expoRegistrationsLoading || expoPage <= 1}
+                            accessibilityLabel="Previous page">
+                            <MaterialIcons name="chevron-left" size={22} color={colors.text} />
+                            <ThemedText style={styles.paginationNavLabel}>Previous</ThemedText>
+                          </TouchableOpacity>
+                          <View style={styles.paginationNavCenter}>
+                            <ThemedText style={styles.paginationNavPageText}>
+                              Page {expoPage} of {eTotalPages}
+                            </ThemedText>
+                          </View>
+                          <TouchableOpacity
+                            style={[
+                              styles.paginationNavButton,
+                              {
+                                backgroundColor: colors.buttonSecondary,
+                                borderColor,
+                                opacity:
+                                  expoRegistrationsLoading || expoPage >= eTotalPages ? 0.45 : 1,
+                              },
+                            ]}
+                            onPress={() => loadExpoPage(expoPage + 1)}
+                            disabled={expoRegistrationsLoading || expoPage >= eTotalPages}
+                            accessibilityLabel="Next page">
+                            <ThemedText style={styles.paginationNavLabel}>Next</ThemedText>
+                            <MaterialIcons name="chevron-right" size={22} color={colors.text} />
+                          </TouchableOpacity>
+                        </View>
+                      );
+                    })()}
                   </>
                 )}
               </>
@@ -775,11 +1144,56 @@ export default function HomeScreen() {
                         </ThemedText>
                       </TouchableOpacity>
                     </View>
+                    <TouchableOpacity
+                      style={[
+                        styles.pdfDownloadButton,
+                        {
+                          borderColor: colors.tint,
+                          backgroundColor: colors.buttonSecondary,
+                          opacity: pdfExporting ? 0.65 : 1,
+                        },
+                      ]}
+                      onPress={() =>
+                        runPdfExport(
+                          riseReportType === 'profile-reports' ? 'rise_profile_reports' : 'rise_investors',
+                          async () => {
+                            const data =
+                              riseReportType === 'profile-reports'
+                                ? await fetchAllRiseProfileReportsForPdf()
+                                : await fetchAllRiseInvestorsForPdf();
+                            return buildRiseReportPdfHtml(
+                              riseReportType === 'profile-reports' ? 'RISE profile reports' : 'RISE investors',
+                              data
+                            );
+                          }
+                        )
+                      }
+                      activeOpacity={0.85}
+                      disabled={pdfExporting}
+                      accessibilityLabel="Download RISE report as PDF">
+                      {pdfExporting ? (
+                        <ActivityIndicator size="small" color={colors.tint} />
+                      ) : (
+                        <MaterialIcons name="picture-as-pdf" size={22} color={colors.tint} />
+                      )}
+                      <ThemedText style={[styles.pdfDownloadButtonText, { color: colors.tint }]}>
+                        Download as PDF
+                      </ThemedText>
+                    </TouchableOpacity>
                     <View style={styles.section}>
-                      {riseData.data.map((item: RiseReportItem) => (
+                      {riseData.data.map((item: RiseReportItem, rIndex: number) => {
+                        const riseRowId = (riseData.pagination.page - 1) * riseLimit + rIndex + 1;
+                        return (
                         <View
                           key={item.id}
                           style={[styles.riseItemCard, { backgroundColor: cardBackground, borderColor }]}>
+                          <View style={styles.cardIdRow}>
+                            <View style={[styles.cardIdBadge, { backgroundColor: colors.buttonSecondary, borderColor }]}>
+                              <ThemedText type="defaultSemiBold" style={[styles.cardIdText, { color: colors.tint }]}>
+                                ID {riseRowId}
+                              </ThemedText>
+                            </View>
+                          </View>
                           <View style={styles.riseItemRow}>
                             <ThemedText type="defaultSemiBold" style={styles.riseItemName}>
                               {item.name}
@@ -804,41 +1218,68 @@ export default function HomeScreen() {
                             <ThemedText style={styles.riseNoReceipt}>No receipt</ThemedText>
                           )}
                         </View>
-                      ))}
+                      );
+                      })}
                     </View>
                     <View style={[styles.paginationCard, { backgroundColor: cardBackground, borderColor }]}>
                       <View style={styles.paginationRow}>
-                        <MaterialIcons name="info-outline" size={20} color={colors.icon} />
-                        <ThemedText style={styles.paginationText}>
-                          Page {riseData.pagination.page} of {riseData.pagination.totalPages}
-                        </ThemedText>
-                      </View>
-                      <View style={styles.paginationRow}>
                         <MaterialIcons name="list" size={20} color={colors.icon} />
                         <ThemedText style={styles.paginationText}>
-                          {riseData.pagination.total} total
+                          {riseData.pagination.total} total · {riseLimit} per page
                         </ThemedText>
                       </View>
                     </View>
-                    {riseData.pagination.page < riseData.pagination.totalPages && (
+                    <View style={styles.paginationNav}>
                       <TouchableOpacity
-                        style={[styles.loadMoreButton, { backgroundColor: colors.tint }]}
-                        onPress={loadMoreRiseReport}
-                        activeOpacity={0.85}
-                        disabled={riseLoadingMore}>
-                        {riseLoadingMore ? (
-                          <View style={styles.loadMoreInner}>
-                            <ActivityIndicator size="small" color={colors.tintText} />
-                            <ThemedText style={[styles.loadMoreText, { color: colors.tintText }]}>Loading more…</ThemedText>
-                          </View>
-                        ) : (
-                          <View style={styles.loadMoreInner}>
-                            <MaterialIcons name="expand-more" size={20} color={colors.tintText} />
-                            <ThemedText style={[styles.loadMoreText, { color: colors.tintText }]}>Load more</ThemedText>
-                          </View>
-                        )}
+                        style={[
+                          styles.paginationNavButton,
+                          {
+                            backgroundColor: colors.buttonSecondary,
+                            borderColor,
+                            opacity:
+                              riseLoading || !riseReportType || riseData.pagination.page <= 1 ? 0.45 : 1,
+                          },
+                        ]}
+                        onPress={() =>
+                          riseReportType && loadRiseReport(riseReportType, riseData.pagination.page - 1)
+                        }
+                        disabled={riseLoading || !riseReportType || riseData.pagination.page <= 1}
+                        accessibilityLabel="Previous page">
+                        <MaterialIcons name="chevron-left" size={22} color={colors.text} />
+                        <ThemedText style={styles.paginationNavLabel}>Previous</ThemedText>
                       </TouchableOpacity>
-                    )}
+                      <View style={styles.paginationNavCenter}>
+                        <ThemedText style={styles.paginationNavPageText}>
+                          Page {riseData.pagination.page} of {riseData.pagination.totalPages}
+                        </ThemedText>
+                      </View>
+                      <TouchableOpacity
+                        style={[
+                          styles.paginationNavButton,
+                          {
+                            backgroundColor: colors.buttonSecondary,
+                            borderColor,
+                            opacity:
+                              riseLoading ||
+                              !riseReportType ||
+                              riseData.pagination.page >= riseData.pagination.totalPages
+                                ? 0.45
+                                : 1,
+                          },
+                        ]}
+                        onPress={() =>
+                          riseReportType && loadRiseReport(riseReportType, riseData.pagination.page + 1)
+                        }
+                        disabled={
+                          riseLoading ||
+                          !riseReportType ||
+                          riseData.pagination.page >= riseData.pagination.totalPages
+                        }
+                        accessibilityLabel="Next page">
+                        <ThemedText style={styles.paginationNavLabel}>Next</ThemedText>
+                        <MaterialIcons name="chevron-right" size={22} color={colors.text} />
+                      </TouchableOpacity>
+                    </View>
                   </>
                 )}
               </>
@@ -1066,6 +1507,36 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
+  cardIdRow: {
+    marginBottom: 12,
+  },
+  cardIdBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  cardIdText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  cardDeleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  cardDeleteLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
   paymentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1157,21 +1628,38 @@ const styles = StyleSheet.create({
   paginationText: {
     fontSize: 14,
   },
-  loadMoreButton: {
-    marginTop: 16,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadMoreInner: {
+  paginationNav: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 16,
     gap: 8,
   },
-  loadMoreText: {
+  paginationNavButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    minWidth: 108,
+    justifyContent: 'center',
+  },
+  paginationNavCenter: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  paginationNavLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  paginationNavPageText: {
     fontSize: 14,
     fontWeight: '700',
+    textAlign: 'center',
   },
   riseReportChoice: {
     marginBottom: 24,
@@ -1295,5 +1783,20 @@ const styles = StyleSheet.create({
     opacity: 0.7,
     textAlign: 'center',
     paddingHorizontal: 40,
+  },
+  pdfDownloadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 14,
+    borderWidth: 2,
+    marginBottom: 16,
+  },
+  pdfDownloadButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
   },
 });
