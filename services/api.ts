@@ -3,6 +3,7 @@ import {
   FunyulaReportsResponse,
   RiseReportItem,
   RiseReportsResponse,
+  VolunteerRoleFilter,
   VolunteersResponse,
 } from '@/types/reports';
 import { Task, TaskAsset, TaskAssignee, TaskStatus } from '@/types/tasks';
@@ -34,15 +35,25 @@ export async function fetchFunyulaReports(
   }
 }
 
-export async function fetchFunyulaVolunteers(offset: number = 0, limit: number = 10): Promise<VolunteersResponse> {
+export async function fetchFunyulaVolunteers(
+  offset: number = 0,
+  limit: number = 10,
+  roleFilter: VolunteerRoleFilter = 'ALL'
+): Promise<VolunteersResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/volunteer/all?offset=${offset}&limit=${limit}`);
+    const params = new URLSearchParams({
+      offset: String(offset),
+      limit: String(limit),
+    });
+    if (roleFilter !== 'ALL') {
+      params.set('role', roleFilter);
+    }
+    const response = await fetch(`${API_BASE_URL}/volunteer/all?${params.toString()}`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     const data: VolunteersResponse = await response.json();
-    console.log(data,'data');
     return data;
   } catch (error) {
     throw new Error(
@@ -180,8 +191,10 @@ export async function fetchAllFunyulaReportsForPdf(): Promise<FunyulaReportsResp
 }
 
 /** Merge every offset window until all volunteers are loaded. */
-export async function fetchAllFunyulaVolunteersForPdf(): Promise<VolunteersResponse> {
-  const first = await fetchFunyulaVolunteers(0, PDF_FETCH_CHUNK);
+export async function fetchAllFunyulaVolunteersForPdf(
+  roleFilter: VolunteerRoleFilter = 'ALL'
+): Promise<VolunteersResponse> {
+  const first = await fetchFunyulaVolunteers(0, PDF_FETCH_CHUNK, roleFilter);
   const totalCount = first.pagination.totalCount;
   const merged: VolunteersResponse['data'] = [...first.data];
   let offset = first.pagination.offset + first.pagination.limit;
@@ -189,7 +202,7 @@ export async function fetchAllFunyulaVolunteersForPdf(): Promise<VolunteersRespo
 
   while (merged.length < totalCount && iterations < PDF_FETCH_MAX_ITERATIONS) {
     iterations += 1;
-    const chunk = await fetchFunyulaVolunteers(offset, PDF_FETCH_CHUNK);
+    const chunk = await fetchFunyulaVolunteers(offset, PDF_FETCH_CHUNK, roleFilter);
     if (chunk.data.length === 0) break;
     merged.push(...chunk.data);
     offset += chunk.pagination.limit;

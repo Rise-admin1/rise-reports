@@ -25,6 +25,7 @@ import {
   RiseReportItem,
   RiseReportsResponse,
   Volunteer,
+  VolunteerRoleFilter,
   VolunteersResponse,
 } from '@/types/reports';
 import {
@@ -34,6 +35,7 @@ import {
   buildSamiaWomenPdfHtml,
   exportHtmlToPdf,
 } from '@/utils/reportPdf';
+import { formatVolunteerGender, formatVolunteerRole } from '@/utils/volunteerDisplay';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import React, { useEffect, useState } from 'react';
 import {
@@ -271,6 +273,30 @@ export default function HomeScreen() {
     } finally {
       setPdfExporting(false);
     }
+  };
+
+  const volunteerPdfFileBase: Record<VolunteerRoleFilter, string> = {
+    ALL: 'funyula_volunteers_all',
+    POLLING_AGENT: 'funyula_volunteers_polling_agent',
+    BLOGGING_TEAM: 'funyula_volunteers_blogging_team',
+    VOTER: 'funyula_volunteers_voter',
+  };
+
+  const runVolunteerPdfWithRoleFilter = (roleFilter: VolunteerRoleFilter) => {
+    void runPdfExport(volunteerPdfFileBase[roleFilter], async () => {
+      const data = await fetchAllFunyulaVolunteersForPdf(roleFilter);
+      return buildFunyulaVolunteersPdfHtml(data, { roleFilter });
+    });
+  };
+
+  const promptVolunteerPdfRole = () => {
+    Alert.alert('Volunteer PDF', 'Choose which report to generate.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'All', onPress: () => runVolunteerPdfWithRoleFilter('ALL') },
+      { text: 'Polling Agent', onPress: () => runVolunteerPdfWithRoleFilter('POLLING_AGENT') },
+      { text: 'Blogging Team', onPress: () => runVolunteerPdfWithRoleFilter('BLOGGING_TEAM') },
+      { text: 'Voter', onPress: () => runVolunteerPdfWithRoleFilter('VOTER') },
+    ]);
   };
 
   const basePayments =
@@ -753,12 +779,7 @@ export default function HomeScreen() {
                           opacity: pdfExporting ? 0.65 : 1,
                         },
                       ]}
-                      onPress={() =>
-                        runPdfExport('funyula_volunteers', async () => {
-                          const data = await fetchAllFunyulaVolunteersForPdf();
-                          return buildFunyulaVolunteersPdfHtml(data);
-                        })
-                      }
+                      onPress={() => promptVolunteerPdfRole()}
                       activeOpacity={0.85}
                       disabled={pdfExporting}
                       accessibilityLabel="Download volunteers report as PDF">
@@ -789,6 +810,18 @@ export default function HomeScreen() {
                               <ThemedText style={styles.volunteerLabel}>Full Name</ThemedText>
                               <ThemedText style={styles.volunteerValuePrimary}>
                                 {volunteer.fullName}
+                              </ThemedText>
+                            </View>
+                            <View style={styles.volunteerField}>
+                              <ThemedText style={styles.volunteerLabel}>Role</ThemedText>
+                              <ThemedText style={styles.volunteerValueSecondary}>
+                                {formatVolunteerRole(volunteer.role)}
+                              </ThemedText>
+                            </View>
+                            <View style={styles.volunteerField}>
+                              <ThemedText style={styles.volunteerLabel}>Gender</ThemedText>
+                              <ThemedText style={styles.volunteerValueSecondary}>
+                                {formatVolunteerGender(volunteer.gender)}
                               </ThemedText>
                             </View>
                             <View style={styles.volunteerField}>

@@ -6,8 +6,15 @@ import type {
   RiseReportItem,
   RiseReportsResponse,
   Volunteer,
+  VolunteerRoleFilter,
   VolunteersResponse,
 } from '@/types/reports';
+import {
+  formatVolunteerGender,
+  formatVolunteerRole,
+  volunteerPdfDocumentTitle,
+  volunteerPdfFilterDescription,
+} from '@/utils/volunteerDisplay';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Alert, Platform } from 'react-native';
@@ -100,7 +107,13 @@ export function buildFunyulaContributionsPdfHtml(data: FunyulaReportsResponse): 
   return wrapDocument('Funyula contributions', inner);
 }
 
-export function buildFunyulaVolunteersPdfHtml(data: VolunteersResponse): string {
+export function buildFunyulaVolunteersPdfHtml(
+  data: VolunteersResponse,
+  options?: { roleFilter?: VolunteerRoleFilter }
+): string {
+  const roleFilter = options?.roleFilter ?? 'ALL';
+  const documentTitle = volunteerPdfDocumentTitle(roleFilter);
+  const filterDesc = volunteerPdfFilterDescription(roleFilter);
   const { pagination } = data;
   const rows = data.data
     .map(
@@ -108,6 +121,8 @@ export function buildFunyulaVolunteersPdfHtml(data: VolunteersResponse): string 
         `<tr>
           <td>${escapeHtml(index + 1)}</td>
           <td>${escapeHtml(v.fullName)}</td>
+          <td>${escapeHtml(formatVolunteerRole(v.role))}</td>
+          <td>${escapeHtml(formatVolunteerGender(v.gender))}</td>
           <td>${escapeHtml(v.ward)}</td>
           <td>${escapeHtml(v.location)}</td>
           <td>${escapeHtml(v.subLocation)}</td>
@@ -119,10 +134,10 @@ export function buildFunyulaVolunteersPdfHtml(data: VolunteersResponse): string 
     .join('');
 
   const inner = `
-    <div class="meta">Total ${escapeHtml(pagination.totalCount)} · ${escapeHtml(data.data.length)} rows in this PDF (full export)</div>
-    <table><thead><tr><th>ID</th><th>Name</th><th>Ward</th><th>Location</th><th>Sub-location</th><th>Polling station</th><th>Phone</th><th>Registered</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="meta">Total ${escapeHtml(pagination.totalCount)} · ${escapeHtml(data.data.length)} rows · Role filter: ${escapeHtml(filterDesc)}</div>
+    <table><thead><tr><th>ID</th><th>Name</th><th>Role</th><th>Gender</th><th>Ward</th><th>Location</th><th>Sub-location</th><th>Polling station</th><th>Phone</th><th>Registered</th></tr></thead><tbody>${rows}</tbody></table>
   `;
-  return wrapDocument('Funyula volunteers', inner);
+  return wrapDocument(documentTitle, inner);
 }
 
 export function buildSamiaWomenPdfHtml(data: ExpoRegistrationsResponse): string {

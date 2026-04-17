@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.rise.reports",
-      "buildNumber": "12",
+      "buildNumber": "14",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }

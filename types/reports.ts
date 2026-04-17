@@ -66,9 +66,14 @@ export interface RiseReportsResponse {
   pagination: RisePagination;
 }
 
+/** Query `role` for GET /volunteer/all — `ALL` means no filter (omit param or use ALL). */
+export type VolunteerRoleFilter = 'ALL' | 'POLLING_AGENT' | 'BLOGGING_TEAM' | 'VOTER';
+
 export interface Volunteer {
   id: string;
   fullName: string;
+  role?: string;
+  gender?: string;
   ward: string;
   location: string;
   subLocation: string;
