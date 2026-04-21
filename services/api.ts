@@ -64,10 +64,19 @@ export async function fetchFunyulaVolunteers(
 
 export async function fetchExpoRegistrations(
   offset: number = 0,
-  limit: number = 10
+  limit: number = 10,
+  search: string = ''
 ): Promise<ExpoRegistrationsResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/volunteer/expo-register/all?offset=${offset}&limit=${limit}`);
+    const params = new URLSearchParams({
+      offset: String(offset),
+      limit: String(limit),
+    });
+    const trimmedSearch = search.trim();
+    if (trimmedSearch.length > 0) {
+      params.set('search', trimmedSearch);
+    }
+    const response = await fetch(`${API_BASE_URL}/volunteer/expo-register/all?${params.toString()}`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }

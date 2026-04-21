@@ -62,6 +62,7 @@ export default function HomeScreen() {
   const [limit] = useState(10);
   const [showSuccessOnly, setShowSuccessOnly] = useState(false);
   const [phoneSearch, setPhoneSearch] = useState('');
+  const [groupNameFilter, setGroupNameFilter] = useState('');
 
   const [volunteersData, setVolunteersData] = useState<VolunteersResponse | null>(null);
   const [volunteersLoading, setVolunteersLoading] = useState(false);
@@ -145,13 +146,13 @@ export default function HomeScreen() {
     }
   };
 
-  const loadExpoPage = async (nextPage: number) => {
+  const loadExpoPage = async (nextPage: number, searchTerm: string = groupNameFilter) => {
     if (nextPage < 1) return;
     setExpoRegistrationsLoading(true);
     setExpoRegistrationsError(null);
     try {
       const offset = (nextPage - 1) * limit;
-      const data = await fetchExpoRegistrations(offset, limit);
+      const data = await fetchExpoRegistrations(offset, limit, searchTerm);
       setExpoRegistrationsData(data);
       setExpoPage(nextPage);
     } catch (err) {
@@ -313,6 +314,15 @@ export default function HomeScreen() {
       : basePayments.filter((p) =>
           (p.phoneNumber || '').toLowerCase().includes(phoneSearchTrimmed)
         );
+  const displayedExpoRegistrations = expoRegistrationsData?.data ?? [];
+
+  useEffect(() => {
+    if (selectedReportType !== 'funyula' || funyulaReportType !== 'samia-women') return;
+    const timer = setTimeout(() => {
+      void loadExpoPage(1, groupNameFilter);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [groupNameFilter, selectedReportType, funyulaReportType]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
@@ -369,6 +379,7 @@ export default function HomeScreen() {
                 setExpoRegistrationsError(null);
                 setExpoRegistrationsLoading(false);
                 setExpoPage(1);
+                setGroupNameFilter('');
               }}
               style={styles.riseBackRow}>
               <MaterialIcons name="arrow-back" size={24} color={colors.text} />
@@ -426,7 +437,8 @@ export default function HomeScreen() {
               onPress={() => {
                 setFunyulaReportType('samia-women');
                 setExpoPage(1);
-                loadExpoPage(1);
+                setGroupNameFilter('');
+                loadExpoPage(1, '');
               }}
               activeOpacity={0.85}>
               <View style={styles.riseReportCardContent}>
@@ -977,8 +989,28 @@ export default function HomeScreen() {
                         Download as PDF
                       </ThemedText>
                     </TouchableOpacity>
+                    <View style={[styles.searchBarContainer, { backgroundColor: cardBackground, borderColor }]}>
+                      <MaterialIcons name="filter-list" size={20} color={colors.icon} />
+                      <TextInput
+                        style={[styles.searchInput, { color: colors.text }]}
+                        placeholder="Filter by Group Name"
+                        placeholderTextColor={colors.icon}
+                        value={groupNameFilter}
+                        onChangeText={setGroupNameFilter}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        returnKeyType="search"
+                      />
+                      {groupNameFilter.length > 0 && (
+                        <TouchableOpacity
+                          onPress={() => setGroupNameFilter('')}
+                          accessibilityLabel="Clear group name filter">
+                          <MaterialIcons name="close" size={20} color={colors.icon} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
                     <View style={styles.section}>
-                      {expoRegistrationsData.data.map((registration: ExpoRegistration, eIndex: number) => {
+                      {displayedExpoRegistrations.map((registration: ExpoRegistration, eIndex: number) => {
                         const expoRowId = (expoPage - 1) * limit + eIndex + 1;
                         return (
                         <View
@@ -1049,6 +1081,14 @@ export default function HomeScreen() {
                         </View>
                       );
                       })}
+                      {displayedExpoRegistrations.length === 0 && (
+                        <View style={[styles.emptyState, { backgroundColor: cardBackground, borderColor }]}>
+                          <MaterialIcons name="search-off" size={22} color={colors.icon} />
+                          <ThemedText style={styles.emptyStateText}>
+                            No registrations match this selected group.
+                          </ThemedText>
+                        </View>
+                      )}
                     </View>
                     <View style={[styles.paginationCard, { backgroundColor: cardBackground, borderColor }]}>
                       <View style={styles.paginationRow}>
@@ -1425,6 +1465,18 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     paddingVertical: 4,
+  },
+  emptyState: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    opacity: 0.75,
   },
   sectionHeader: {
     flexDirection: 'row',
