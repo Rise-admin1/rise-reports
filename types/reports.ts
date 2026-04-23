@@ -68,6 +68,19 @@ export interface RiseReportsResponse {
 
 /** Query `role` for GET /volunteer/all — `ALL` means no filter (omit param or use ALL). */
 export type VolunteerRoleFilter = 'ALL' | 'POLLING_AGENT' | 'BLOGGING_TEAM' | 'VOTER';
+/** Query `gender` for GET /volunteer/all — `ALL` means no filter. */
+export type VolunteerGenderFilter = 'ALL' | 'MALE' | 'FEMALE';
+export type VolunteerFieldFilters = {
+  id?: string;
+  fullName?: string;
+  name?: string;
+  ward?: string;
+  phone?: string;
+  location?: string;
+  subLocation?: string;
+  pollingStation?: string;
+  message?: string;
+};
 
 export interface Volunteer {
   id: string;
@@ -110,3 +123,11 @@ export interface ExpoRegistrationsResponse {
   data: ExpoRegistration[];
   pagination: VolunteerPagination;
 }
+
+export type ExpoFieldFilters = {
+  groupName?: string;
+  designation?: string;
+  groupLeaderName?: string;
+  yourName?: string;
+  phoneNumber?: string;
+};

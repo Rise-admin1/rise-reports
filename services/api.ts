@@ -1,8 +1,11 @@
 import {
+  ExpoFieldFilters,
   ExpoRegistrationsResponse,
   FunyulaReportsResponse,
   RiseReportItem,
   RiseReportsResponse,
+  VolunteerFieldFilters,
+  VolunteerGenderFilter,
   VolunteerRoleFilter,
   VolunteersResponse,
 } from '@/types/reports';
@@ -38,15 +41,50 @@ export async function fetchFunyulaReports(
 export async function fetchFunyulaVolunteers(
   offset: number = 0,
   limit: number = 10,
-  roleFilter: VolunteerRoleFilter = 'ALL'
+  roleOrOptions: VolunteerRoleFilter | {
+    roleFilter?: VolunteerRoleFilter;
+    genderFilter?: VolunteerGenderFilter;
+    search?: string;
+    filters?: VolunteerFieldFilters;
+  } = 'ALL'
 ): Promise<VolunteersResponse> {
   try {
+    const roleFilter =
+      typeof roleOrOptions === 'string' ? roleOrOptions : (roleOrOptions.roleFilter ?? 'ALL');
+    const genderFilter = typeof roleOrOptions === 'string' ? 'ALL' : (roleOrOptions.genderFilter ?? 'ALL');
+    const search = typeof roleOrOptions === 'string' ? '' : (roleOrOptions.search ?? '');
+    const filters = typeof roleOrOptions === 'string' ? {} : (roleOrOptions.filters ?? {});
+
     const params = new URLSearchParams({
       offset: String(offset),
       limit: String(limit),
     });
     if (roleFilter !== 'ALL') {
       params.set('role', roleFilter);
+    }
+    if (genderFilter !== 'ALL') {
+      params.set('gender', genderFilter);
+    }
+    const trimmedSearch = search.trim();
+    if (trimmedSearch.length > 0) {
+      params.set('search', trimmedSearch);
+    }
+    const fieldFilterKeys: Array<keyof VolunteerFieldFilters> = [
+      'id',
+      'fullName',
+      'name',
+      'ward',
+      'phone',
+      'location',
+      'subLocation',
+      'pollingStation',
+      'message',
+    ];
+    for (const key of fieldFilterKeys) {
+      const value = filters[key];
+      if (typeof value === 'string' && value.trim().length > 0) {
+        params.set(key, value.trim());
+      }
     }
     const response = await fetch(`${API_BASE_URL}/volunteer/all?${params.toString()}`);
     if (!response.ok) {
@@ -65,9 +103,11 @@ export async function fetchFunyulaVolunteers(
 export async function fetchExpoRegistrations(
   offset: number = 0,
   limit: number = 10,
-  search: string = ''
+  searchOrOptions: string | { search?: string; filters?: ExpoFieldFilters } = ''
 ): Promise<ExpoRegistrationsResponse> {
   try {
+    const search = typeof searchOrOptions === 'string' ? searchOrOptions : (searchOrOptions.search ?? '');
+    const filters = typeof searchOrOptions === 'string' ? {} : (searchOrOptions.filters ?? {});
     const params = new URLSearchParams({
       offset: String(offset),
       limit: String(limit),
@@ -75,6 +115,19 @@ export async function fetchExpoRegistrations(
     const trimmedSearch = search.trim();
     if (trimmedSearch.length > 0) {
       params.set('search', trimmedSearch);
+    }
+    const fieldFilterKeys: Array<keyof ExpoFieldFilters> = [
+      'groupName',
+      'designation',
+      'groupLeaderName',
+      'yourName',
+      'phoneNumber',
+    ];
+    for (const key of fieldFilterKeys) {
+      const value = filters[key];
+      if (typeof value === 'string' && value.trim().length > 0) {
+        params.set(key, value.trim());
+      }
     }
     const response = await fetch(`${API_BASE_URL}/volunteer/expo-register/all?${params.toString()}`);
     if (!response.ok) {
@@ -201,9 +254,35 @@ export async function fetchAllFunyulaReportsForPdf(): Promise<FunyulaReportsResp
 
 /** Merge every offset window until all volunteers are loaded. */
 export async function fetchAllFunyulaVolunteersForPdf(
-  roleFilter: VolunteerRoleFilter = 'ALL'
+  options: {
+    roleFilter?: VolunteerRoleFilter;
+    genderFilter?: VolunteerGenderFilter;
+    search?: string;
+    filters?: VolunteerFieldFilters;
+  } = {}
 ): Promise<VolunteersResponse> {
-  const first = await fetchFunyulaVolunteers(0, PDF_FETCH_CHUNK, roleFilter);
+  const roleFilter = options.roleFilter ?? 'ALL';
+  const genderFilter = options.genderFilter ?? 'ALL';
+  const search = options.search?.trim() ?? '';
+  const filters = options.filters ?? {};
+  const normalizedFieldFilters = {
+    id: filters.id?.trim().toLowerCase() ?? '',
+    fullName: (filters.fullName ?? filters.name)?.trim().toLowerCase() ?? '',
+    ward: filters.ward?.trim().toLowerCase() ?? '',
+    phone: filters.phone?.trim().toLowerCase() ?? '',
+    location: filters.location?.trim().toLowerCase() ?? '',
+    subLocation: filters.subLocation?.trim().toLowerCase() ?? '',
+    pollingStation: filters.pollingStation?.trim().toLowerCase() ?? '',
+    message: filters.message?.trim().toLowerCase() ?? '',
+  };
+  const hasFieldFilter = Object.values(normalizedFieldFilters).some((value) => value.length > 0);
+  const hasClientSideFilter = roleFilter !== 'ALL' || genderFilter !== 'ALL' || search.length > 0 || hasFieldFilter;
+
+  const first = await fetchFunyulaVolunteers(
+    0,
+    PDF_FETCH_CHUNK,
+    hasClientSideFilter ? 'ALL' : { roleFilter, genderFilter, search }
+  );
   const totalCount = first.pagination.totalCount;
   const merged: VolunteersResponse['data'] = [...first.data];
   let offset = first.pagination.offset + first.pagination.limit;
@@ -211,26 +290,111 @@ export async function fetchAllFunyulaVolunteersForPdf(
 
   while (merged.length < totalCount && iterations < PDF_FETCH_MAX_ITERATIONS) {
     iterations += 1;
-    const chunk = await fetchFunyulaVolunteers(offset, PDF_FETCH_CHUNK, roleFilter);
+    const chunk = await fetchFunyulaVolunteers(
+      offset,
+      PDF_FETCH_CHUNK,
+      hasClientSideFilter ? 'ALL' : { roleFilter, genderFilter, search }
+    );
     if (chunk.data.length === 0) break;
     merged.push(...chunk.data);
     offset += chunk.pagination.limit;
   }
 
+  const normalizedSearch = search.toLowerCase();
+  const filtered = hasClientSideFilter
+    ? merged.filter((volunteer) => {
+        const roleMatch = roleFilter === 'ALL' || volunteer.role === roleFilter;
+        const genderMatch = genderFilter === 'ALL' || volunteer.gender === genderFilter;
+        if (!roleMatch || !genderMatch) return false;
+        const idMatch = normalizedFieldFilters.id
+          ? volunteer.id.toLowerCase().includes(normalizedFieldFilters.id)
+          : true;
+        const fullNameMatch = normalizedFieldFilters.fullName
+          ? volunteer.fullName.toLowerCase().includes(normalizedFieldFilters.fullName)
+          : true;
+        const wardMatch = normalizedFieldFilters.ward
+          ? volunteer.ward.toLowerCase().includes(normalizedFieldFilters.ward)
+          : true;
+        const phoneMatch = normalizedFieldFilters.phone
+          ? volunteer.phone.toLowerCase().includes(normalizedFieldFilters.phone)
+          : true;
+        const locationMatch = normalizedFieldFilters.location
+          ? volunteer.location.toLowerCase().includes(normalizedFieldFilters.location)
+          : true;
+        const subLocationMatch = normalizedFieldFilters.subLocation
+          ? volunteer.subLocation.toLowerCase().includes(normalizedFieldFilters.subLocation)
+          : true;
+        const pollingStationMatch = normalizedFieldFilters.pollingStation
+          ? volunteer.pollingStation.toLowerCase().includes(normalizedFieldFilters.pollingStation)
+          : true;
+        const messageMatch = normalizedFieldFilters.message
+          ? String((volunteer as VolunteerWithMessage).message ?? '').toLowerCase().includes(normalizedFieldFilters.message)
+          : true;
+        if (
+          !idMatch ||
+          !fullNameMatch ||
+          !wardMatch ||
+          !phoneMatch ||
+          !locationMatch ||
+          !subLocationMatch ||
+          !pollingStationMatch ||
+          !messageMatch
+        ) {
+          return false;
+        }
+
+        if (!normalizedSearch) return true;
+
+        const haystacks = [
+          volunteer.id,
+          volunteer.fullName,
+          volunteer.ward,
+          volunteer.phone,
+          volunteer.location,
+          volunteer.subLocation,
+          volunteer.pollingStation,
+          volunteer.role ?? '',
+          volunteer.gender ?? '',
+        ];
+
+        return haystacks.some((value) => value.toLowerCase().includes(normalizedSearch));
+      })
+    : merged;
+
   return {
     ...first,
-    data: merged,
+    data: filtered,
     pagination: {
       offset: 0,
-      limit: merged.length,
-      totalCount,
+      limit: filtered.length,
+      totalCount: filtered.length,
     },
   };
 }
 
+type VolunteerWithMessage = VolunteersResponse['data'][number] & { message?: string | null };
+
 /** Merge every offset window until all expo registrations are loaded. */
-export async function fetchAllExpoRegistrationsForPdf(): Promise<ExpoRegistrationsResponse> {
-  const first = await fetchExpoRegistrations(0, PDF_FETCH_CHUNK);
+export async function fetchAllExpoRegistrationsForPdf(
+  options: { search?: string; filters?: ExpoFieldFilters } = {}
+): Promise<ExpoRegistrationsResponse> {
+  const search = options.search?.trim() ?? '';
+  const filters = options.filters ?? {};
+  const normalizedFieldFilters = {
+    groupName: filters.groupName?.trim().toLowerCase() ?? '',
+    designation: filters.designation?.trim().toLowerCase() ?? '',
+    groupLeaderName: filters.groupLeaderName?.trim().toLowerCase() ?? '',
+    yourName: filters.yourName?.trim().toLowerCase() ?? '',
+    phoneNumber: filters.phoneNumber?.trim().toLowerCase() ?? '',
+  };
+  const hasFieldFilter = Object.values(normalizedFieldFilters).some((value) => value.length > 0);
+  const hasClientSideFilter = search.length > 0 || hasFieldFilter;
+
+  const first = await fetchExpoRegistrations(
+    0,
+    PDF_FETCH_CHUNK,
+    hasClientSideFilter ? '' : { search, filters }
+  );
   const totalCount = first.pagination.totalCount;
   const merged: ExpoRegistrationsResponse['data'] = [...first.data];
   let offset = first.pagination.offset + first.pagination.limit;
@@ -238,19 +402,61 @@ export async function fetchAllExpoRegistrationsForPdf(): Promise<ExpoRegistratio
 
   while (merged.length < totalCount && iterations < PDF_FETCH_MAX_ITERATIONS) {
     iterations += 1;
-    const chunk = await fetchExpoRegistrations(offset, PDF_FETCH_CHUNK);
+    const chunk = await fetchExpoRegistrations(
+      offset,
+      PDF_FETCH_CHUNK,
+      hasClientSideFilter ? '' : { search, filters }
+    );
     if (chunk.data.length === 0) break;
     merged.push(...chunk.data);
     offset += chunk.pagination.limit;
   }
 
+  const normalizedSearch = search.toLowerCase();
+  const filtered = hasClientSideFilter
+    ? merged.filter((item) => {
+        const groupNameMatch = normalizedFieldFilters.groupName
+          ? item.groupName.toLowerCase().includes(normalizedFieldFilters.groupName)
+          : true;
+        const designationMatch = normalizedFieldFilters.designation
+          ? item.designation.toLowerCase().includes(normalizedFieldFilters.designation)
+          : true;
+        const groupLeaderNameMatch = normalizedFieldFilters.groupLeaderName
+          ? item.groupLeaderName.toLowerCase().includes(normalizedFieldFilters.groupLeaderName)
+          : true;
+        const yourNameMatch = normalizedFieldFilters.yourName
+          ? item.yourName.toLowerCase().includes(normalizedFieldFilters.yourName)
+          : true;
+        const phoneNumberMatch = normalizedFieldFilters.phoneNumber
+          ? item.phoneNumber.toLowerCase().includes(normalizedFieldFilters.phoneNumber)
+          : true;
+        if (
+          !groupNameMatch ||
+          !designationMatch ||
+          !groupLeaderNameMatch ||
+          !yourNameMatch ||
+          !phoneNumberMatch
+        ) {
+          return false;
+        }
+        if (!normalizedSearch) return true;
+        return [
+          item.groupName,
+          item.designation,
+          item.groupLeaderName,
+          item.yourName,
+          item.phoneNumber,
+        ].some((value) => value.toLowerCase().includes(normalizedSearch));
+      })
+    : merged;
+
   return {
     ...first,
-    data: merged,
+    data: filtered,
     pagination: {
       offset: 0,
-      limit: merged.length,
-      totalCount,
+      limit: filtered.length,
+      totalCount: filtered.length,
     },
   };
 }

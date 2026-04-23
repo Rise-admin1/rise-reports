@@ -6,6 +6,7 @@ import type {
   RiseReportItem,
   RiseReportsResponse,
   Volunteer,
+  VolunteerGenderFilter,
   VolunteerRoleFilter,
   VolunteersResponse,
 } from '@/types/reports';
@@ -109,11 +110,15 @@ export function buildFunyulaContributionsPdfHtml(data: FunyulaReportsResponse): 
 
 export function buildFunyulaVolunteersPdfHtml(
   data: VolunteersResponse,
-  options?: { roleFilter?: VolunteerRoleFilter }
+  options?: { roleFilter?: VolunteerRoleFilter; genderFilter?: VolunteerGenderFilter; search?: string }
 ): string {
   const roleFilter = options?.roleFilter ?? 'ALL';
+  const genderFilter = options?.genderFilter ?? 'ALL';
+  const search = options?.search?.trim() ?? '';
   const documentTitle = volunteerPdfDocumentTitle(roleFilter);
   const filterDesc = volunteerPdfFilterDescription(roleFilter);
+  const genderDesc = genderFilter === 'ALL' ? 'All genders' : genderFilter === 'MALE' ? 'Male' : 'Female';
+  const searchDesc = search.length > 0 ? search : 'None';
   const { pagination } = data;
   const rows = data.data
     .map(
@@ -134,7 +139,7 @@ export function buildFunyulaVolunteersPdfHtml(
     .join('');
 
   const inner = `
-    <div class="meta">Total ${escapeHtml(pagination.totalCount)} · ${escapeHtml(data.data.length)} rows · Role filter: ${escapeHtml(filterDesc)}</div>
+    <div class="meta">Total ${escapeHtml(pagination.totalCount)} · ${escapeHtml(data.data.length)} rows · Role filter: ${escapeHtml(filterDesc)} · Gender filter: ${escapeHtml(genderDesc)} · Search: ${escapeHtml(searchDesc)}</div>
     <table><thead><tr><th>ID</th><th>Name</th><th>Role</th><th>Gender</th><th>Ward</th><th>Location</th><th>Sub-location</th><th>Polling station</th><th>Phone</th><th>Registered</th></tr></thead><tbody>${rows}</tbody></table>
   `;
   return wrapDocument(documentTitle, inner);

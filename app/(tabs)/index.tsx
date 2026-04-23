@@ -19,12 +19,15 @@ import {
 } from '@/services/api';
 import {
   ExpoRegistration,
+  ExpoFieldFilters,
   ExpoRegistrationsResponse,
   FunyulaReportsResponse,
   Payment,
   RiseReportItem,
   RiseReportsResponse,
   Volunteer,
+  VolunteerFieldFilters,
+  VolunteerGenderFilter,
   VolunteerRoleFilter,
   VolunteersResponse,
 } from '@/types/reports';
@@ -62,16 +65,37 @@ export default function HomeScreen() {
   const [limit] = useState(10);
   const [showSuccessOnly, setShowSuccessOnly] = useState(false);
   const [phoneSearch, setPhoneSearch] = useState('');
-  const [groupNameFilter, setGroupNameFilter] = useState('');
+  const [expoSearchInput, setExpoSearchInput] = useState('');
+  const [expoSearchQuery, setExpoSearchQuery] = useState('');
+  const [expoFieldFilters, setExpoFieldFilters] = useState<ExpoFieldFilters>({
+    groupName: '',
+    designation: '',
+    groupLeaderName: '',
+    yourName: '',
+    phoneNumber: '',
+  });
 
   const [volunteersData, setVolunteersData] = useState<VolunteersResponse | null>(null);
   const [volunteersLoading, setVolunteersLoading] = useState(false);
   const [volunteersError, setVolunteersError] = useState<string | null>(null);
   const [volunteersPage, setVolunteersPage] = useState(1);
+  const [showVolunteerFilters, setShowVolunteerFilters] = useState(false);
+  const [volunteerRoleFilter, setVolunteerRoleFilter] = useState<VolunteerRoleFilter>('ALL');
+  const [volunteerGenderFilter, setVolunteerGenderFilter] = useState<VolunteerGenderFilter>('ALL');
+  const [volunteerSearchInput, setVolunteerSearchInput] = useState('');
+  const [volunteerSearchQuery, setVolunteerSearchQuery] = useState('');
+  const [volunteerFieldFilters, setVolunteerFieldFilters] = useState<VolunteerFieldFilters>({
+    phone: '',
+    ward: '',
+    location: '',
+    subLocation: '',
+    pollingStation: '',
+  });
   const [expoRegistrationsData, setExpoRegistrationsData] = useState<ExpoRegistrationsResponse | null>(null);
   const [expoRegistrationsLoading, setExpoRegistrationsLoading] = useState(false);
   const [expoRegistrationsError, setExpoRegistrationsError] = useState<string | null>(null);
   const [expoPage, setExpoPage] = useState(1);
+  const [showExpoFilters, setShowExpoFilters] = useState(false);
   const [deletingVolunteerId, setDeletingVolunteerId] = useState<string | null>(null);
   const [deletingExpoId, setDeletingExpoId] = useState<string | null>(null);
 
@@ -136,7 +160,12 @@ export default function HomeScreen() {
     setVolunteersError(null);
     try {
       const offset = (nextPage - 1) * limit;
-      const data = await fetchFunyulaVolunteers(offset, limit);
+      const data = await fetchFunyulaVolunteers(offset, limit, {
+        roleFilter: volunteerRoleFilter,
+        genderFilter: volunteerGenderFilter,
+        search: volunteerSearchQuery,
+        filters: volunteerFieldFilters,
+      });
       setVolunteersData(data);
       setVolunteersPage(nextPage);
     } catch (err) {
@@ -146,13 +175,16 @@ export default function HomeScreen() {
     }
   };
 
-  const loadExpoPage = async (nextPage: number, searchTerm: string = groupNameFilter) => {
+  const loadExpoPage = async (nextPage: number) => {
     if (nextPage < 1) return;
     setExpoRegistrationsLoading(true);
     setExpoRegistrationsError(null);
     try {
       const offset = (nextPage - 1) * limit;
-      const data = await fetchExpoRegistrations(offset, limit, searchTerm);
+      const data = await fetchExpoRegistrations(offset, limit, {
+        search: expoSearchQuery,
+        filters: expoFieldFilters,
+      });
       setExpoRegistrationsData(data);
       setExpoPage(nextPage);
     } catch (err) {
@@ -285,19 +317,85 @@ export default function HomeScreen() {
 
   const runVolunteerPdfWithRoleFilter = (roleFilter: VolunteerRoleFilter) => {
     void runPdfExport(volunteerPdfFileBase[roleFilter], async () => {
-      const data = await fetchAllFunyulaVolunteersForPdf(roleFilter);
-      return buildFunyulaVolunteersPdfHtml(data, { roleFilter });
+      const data = await fetchAllFunyulaVolunteersForPdf({
+        roleFilter,
+        genderFilter: volunteerGenderFilter,
+        search: volunteerSearchQuery,
+        filters: volunteerFieldFilters,
+      });
+      return buildFunyulaVolunteersPdfHtml(data, {
+        roleFilter,
+        genderFilter: volunteerGenderFilter,
+        search: volunteerSearchQuery,
+      });
     });
   };
 
-  const promptVolunteerPdfRole = () => {
-    Alert.alert('Volunteer PDF', 'Choose which report to generate.', [
+  const volunteerRoleLabel = (value: VolunteerRoleFilter) => {
+    switch (value) {
+      case 'POLLING_AGENT':
+        return 'Polling Agent';
+      case 'BLOGGING_TEAM':
+        return 'Blogging Team';
+      case 'VOTER':
+        return 'Voter';
+      default:
+        return 'All roles';
+    }
+  };
+
+  const volunteerGenderLabel = (value: VolunteerGenderFilter) => {
+    switch (value) {
+      case 'MALE':
+        return 'Male';
+      case 'FEMALE':
+        return 'Female';
+      default:
+        return 'All genders';
+    }
+  };
+
+  const promptVolunteerRoleFilter = () => {
+    Alert.alert('Filter by role', 'Choose role filter.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'All', onPress: () => runVolunteerPdfWithRoleFilter('ALL') },
-      { text: 'Polling Agent', onPress: () => runVolunteerPdfWithRoleFilter('POLLING_AGENT') },
-      { text: 'Blogging Team', onPress: () => runVolunteerPdfWithRoleFilter('BLOGGING_TEAM') },
-      { text: 'Voter', onPress: () => runVolunteerPdfWithRoleFilter('VOTER') },
+      { text: 'All roles', onPress: () => setVolunteerRoleFilter('ALL') },
+      { text: 'Polling Agent', onPress: () => setVolunteerRoleFilter('POLLING_AGENT') },
+      { text: 'Blogging Team', onPress: () => setVolunteerRoleFilter('BLOGGING_TEAM') },
+      { text: 'Voter', onPress: () => setVolunteerRoleFilter('VOTER') },
     ]);
+  };
+
+  const promptVolunteerGenderFilter = () => {
+    Alert.alert('Filter by gender', 'Choose gender filter.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'All genders', onPress: () => setVolunteerGenderFilter('ALL') },
+      { text: 'Male', onPress: () => setVolunteerGenderFilter('MALE') },
+      { text: 'Female', onPress: () => setVolunteerGenderFilter('FEMALE') },
+    ]);
+  };
+
+  const promptVolunteerPdfRole = () => {
+    Alert.alert('Volunteer PDF', 'Download current filtered data as PDF?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Download', onPress: () => runVolunteerPdfWithRoleFilter(volunteerRoleFilter) },
+    ]);
+  };
+
+  const updateExpoFieldFilter = (key: keyof ExpoFieldFilters, value: string) => {
+    setExpoFieldFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const promptExpoDesignationFilter = () => {
+    Alert.alert('Filter by designation', 'Choose designation.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'All designations', onPress: () => updateExpoFieldFilter('designation', '') },
+      { text: 'Official', onPress: () => updateExpoFieldFilter('designation', 'Official') },
+      { text: 'Member', onPress: () => updateExpoFieldFilter('designation', 'Member') },
+    ]);
+  };
+
+  const updateVolunteerFieldFilter = (key: keyof VolunteerFieldFilters, value: string) => {
+    setVolunteerFieldFilters((prev) => ({ ...prev, [key]: value }));
   };
 
   const basePayments =
@@ -318,11 +416,34 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (selectedReportType !== 'funyula' || funyulaReportType !== 'samia-women') return;
+    void loadExpoPage(1);
+  }, [selectedReportType, funyulaReportType, expoSearchQuery, expoFieldFilters]);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
-      void loadExpoPage(1, groupNameFilter);
+      setExpoSearchQuery(expoSearchInput.trim());
     }, 350);
     return () => clearTimeout(timer);
-  }, [groupNameFilter, selectedReportType, funyulaReportType]);
+  }, [expoSearchInput]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setVolunteerSearchQuery(volunteerSearchInput.trim());
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [volunteerSearchInput]);
+
+  useEffect(() => {
+    if (selectedReportType !== 'funyula' || funyulaReportType !== 'volunteer') return;
+    void loadVolunteersPage(1);
+  }, [
+    selectedReportType,
+    funyulaReportType,
+    volunteerRoleFilter,
+    volunteerGenderFilter,
+    volunteerSearchQuery,
+    volunteerFieldFilters,
+  ]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
@@ -375,11 +496,32 @@ export default function HomeScreen() {
                 setVolunteersError(null);
                 setVolunteersLoading(false);
                 setVolunteersPage(1);
+                setShowVolunteerFilters(false);
+                setVolunteerRoleFilter('ALL');
+                setVolunteerGenderFilter('ALL');
+                setVolunteerSearchInput('');
+                setVolunteerSearchQuery('');
+                setVolunteerFieldFilters({
+                  phone: '',
+                  ward: '',
+                  location: '',
+                  subLocation: '',
+                  pollingStation: '',
+                });
                 setExpoRegistrationsData(null);
                 setExpoRegistrationsError(null);
                 setExpoRegistrationsLoading(false);
                 setExpoPage(1);
-                setGroupNameFilter('');
+                setShowExpoFilters(false);
+                setExpoSearchInput('');
+                setExpoSearchQuery('');
+                setExpoFieldFilters({
+                  groupName: '',
+                  designation: '',
+                  groupLeaderName: '',
+                  yourName: '',
+                  phoneNumber: '',
+                });
               }}
               style={styles.riseBackRow}>
               <MaterialIcons name="arrow-back" size={24} color={colors.text} />
@@ -420,7 +562,18 @@ export default function HomeScreen() {
               onPress={() => {
                 setFunyulaReportType('volunteer');
                 setVolunteersPage(1);
-                loadVolunteersPage(1);
+                setShowVolunteerFilters(false);
+                setVolunteerRoleFilter('ALL');
+                setVolunteerGenderFilter('ALL');
+                setVolunteerSearchInput('');
+                setVolunteerSearchQuery('');
+                setVolunteerFieldFilters({
+                  phone: '',
+                  ward: '',
+                  location: '',
+                  subLocation: '',
+                  pollingStation: '',
+                });
               }}
               activeOpacity={0.85}>
               <View style={styles.riseReportCardContent}>
@@ -437,8 +590,16 @@ export default function HomeScreen() {
               onPress={() => {
                 setFunyulaReportType('samia-women');
                 setExpoPage(1);
-                setGroupNameFilter('');
-                loadExpoPage(1, '');
+                setShowExpoFilters(false);
+                setExpoSearchInput('');
+                setExpoSearchQuery('');
+                setExpoFieldFilters({
+                  groupName: '',
+                  designation: '',
+                  groupLeaderName: '',
+                  yourName: '',
+                  phoneNumber: '',
+                });
               }}
               activeOpacity={0.85}>
               <View style={styles.riseReportCardContent}>
@@ -804,6 +965,133 @@ export default function HomeScreen() {
                         Download as PDF
                       </ThemedText>
                     </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.filterIconButton, { backgroundColor: colors.buttonSecondary, borderColor }]}
+                      onPress={() => setShowVolunteerFilters((prev) => !prev)}
+                      activeOpacity={0.85}
+                      accessibilityLabel="Toggle volunteer filters">
+                      <MaterialIcons name="filter-list" size={20} color={colors.tint} />
+                      <ThemedText style={[styles.filterIconButtonText, { color: colors.tint }]}>
+                        {showVolunteerFilters ? 'Hide filters' : 'Show filters'}
+                      </ThemedText>
+                    </TouchableOpacity>
+                    {showVolunteerFilters && (
+                      <>
+                        <View style={[styles.searchBarContainer, { backgroundColor: cardBackground, borderColor }]}>
+                          <MaterialIcons name="search" size={20} color={colors.icon} />
+                          <TextInput
+                            style={[styles.searchInput, { color: colors.text }]}
+                            placeholder="Search volunteers"
+                            placeholderTextColor={colors.icon}
+                            value={volunteerSearchInput}
+                            onChangeText={setVolunteerSearchInput}
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            returnKeyType="search"
+                          />
+                          {volunteerSearchInput.length > 0 && (
+                            <TouchableOpacity
+                              onPress={() => setVolunteerSearchInput('')}
+                              accessibilityLabel="Clear volunteer search">
+                              <MaterialIcons name="close" size={20} color={colors.icon} />
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                        <View style={styles.section}>
+                          <View style={[styles.searchBarContainer, { backgroundColor: cardBackground, borderColor }]}>
+                            <MaterialIcons name="phone" size={20} color={colors.icon} />
+                            <TextInput
+                              style={[styles.searchInput, { color: colors.text }]}
+                              placeholder="Filter by phone number"
+                              placeholderTextColor={colors.icon}
+                              value={volunteerFieldFilters.phone ?? ''}
+                              onChangeText={(value) => updateVolunteerFieldFilter('phone', value)}
+                              autoCapitalize="none"
+                              autoCorrect={false}
+                              keyboardType="phone-pad"
+                            />
+                          </View>
+                          <View style={[styles.searchBarContainer, { backgroundColor: cardBackground, borderColor }]}>
+                            <MaterialIcons name="map" size={20} color={colors.icon} />
+                            <TextInput
+                              style={[styles.searchInput, { color: colors.text }]}
+                              placeholder="Filter by ward"
+                              placeholderTextColor={colors.icon}
+                              value={volunteerFieldFilters.ward ?? ''}
+                              onChangeText={(value) => updateVolunteerFieldFilter('ward', value)}
+                              autoCapitalize="words"
+                              autoCorrect={false}
+                            />
+                          </View>
+                          <View style={[styles.searchBarContainer, { backgroundColor: cardBackground, borderColor }]}>
+                            <MaterialIcons name="place" size={20} color={colors.icon} />
+                            <TextInput
+                              style={[styles.searchInput, { color: colors.text }]}
+                              placeholder="Filter by location"
+                              placeholderTextColor={colors.icon}
+                              value={volunteerFieldFilters.location ?? ''}
+                              onChangeText={(value) => updateVolunteerFieldFilter('location', value)}
+                              autoCapitalize="words"
+                              autoCorrect={false}
+                            />
+                          </View>
+                          <View style={[styles.searchBarContainer, { backgroundColor: cardBackground, borderColor }]}>
+                            <MaterialIcons name="location-on" size={20} color={colors.icon} />
+                            <TextInput
+                              style={[styles.searchInput, { color: colors.text }]}
+                              placeholder="Filter by sub location"
+                              placeholderTextColor={colors.icon}
+                              value={volunteerFieldFilters.subLocation ?? ''}
+                              onChangeText={(value) => updateVolunteerFieldFilter('subLocation', value)}
+                              autoCapitalize="words"
+                              autoCorrect={false}
+                            />
+                          </View>
+                          <View style={[styles.searchBarContainer, { backgroundColor: cardBackground, borderColor }]}>
+                            <MaterialIcons name="how-to-vote" size={20} color={colors.icon} />
+                            <TextInput
+                              style={[styles.searchInput, { color: colors.text }]}
+                              placeholder="Filter by polling station"
+                              placeholderTextColor={colors.icon}
+                              value={volunteerFieldFilters.pollingStation ?? ''}
+                              onChangeText={(value) => updateVolunteerFieldFilter('pollingStation', value)}
+                              autoCapitalize="words"
+                              autoCorrect={false}
+                            />
+                          </View>
+                        </View>
+                        <View style={styles.filterPills}>
+                          <TouchableOpacity
+                            style={[
+                              styles.filterPill,
+                              {
+                                backgroundColor: colors.buttonSecondary,
+                                borderColor,
+                              },
+                            ]}
+                            onPress={promptVolunteerRoleFilter}
+                            activeOpacity={0.8}>
+                            <ThemedText style={[styles.filterPillText, { color: colors.buttonSecondaryText }]}>
+                              {volunteerRoleLabel(volunteerRoleFilter)}
+                            </ThemedText>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[
+                              styles.filterPill,
+                              {
+                                backgroundColor: colors.buttonSecondary,
+                                borderColor,
+                              },
+                            ]}
+                            onPress={promptVolunteerGenderFilter}
+                            activeOpacity={0.8}>
+                            <ThemedText style={[styles.filterPillText, { color: colors.buttonSecondaryText }]}>
+                              {volunteerGenderLabel(volunteerGenderFilter)}
+                            </ThemedText>
+                          </TouchableOpacity>
+                        </View>
+                      </>
+                    )}
                     <View style={styles.section}>
                       {volunteersData.data.map((volunteer: Volunteer, vIndex: number) => {
                         const volunteerRowId = (volunteersPage - 1) * limit + vIndex + 1;
@@ -973,7 +1261,10 @@ export default function HomeScreen() {
                       ]}
                       onPress={() =>
                         runPdfExport('samia_women_registration', async () => {
-                          const data = await fetchAllExpoRegistrationsForPdf();
+                          const data = await fetchAllExpoRegistrationsForPdf({
+                            search: expoSearchQuery,
+                            filters: expoFieldFilters,
+                          });
                           return buildSamiaWomenPdfHtml(data);
                         })
                       }
@@ -989,26 +1280,132 @@ export default function HomeScreen() {
                         Download as PDF
                       </ThemedText>
                     </TouchableOpacity>
-                    <View style={[styles.searchBarContainer, { backgroundColor: cardBackground, borderColor }]}>
-                      <MaterialIcons name="filter-list" size={20} color={colors.icon} />
-                      <TextInput
-                        style={[styles.searchInput, { color: colors.text }]}
-                        placeholder="Filter by Group Name"
-                        placeholderTextColor={colors.icon}
-                        value={groupNameFilter}
-                        onChangeText={setGroupNameFilter}
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                        returnKeyType="search"
-                      />
-                      {groupNameFilter.length > 0 && (
-                        <TouchableOpacity
-                          onPress={() => setGroupNameFilter('')}
-                          accessibilityLabel="Clear group name filter">
-                          <MaterialIcons name="close" size={20} color={colors.icon} />
-                        </TouchableOpacity>
-                      )}
-                    </View>
+                    <TouchableOpacity
+                      style={[styles.filterIconButton, { backgroundColor: colors.buttonSecondary, borderColor }]}
+                      onPress={() => setShowExpoFilters((prev) => !prev)}
+                      activeOpacity={0.85}
+                      accessibilityLabel="Toggle registration filters">
+                      <MaterialIcons name="filter-list" size={20} color={colors.tint} />
+                      <ThemedText style={[styles.filterIconButtonText, { color: colors.tint }]}>
+                        {showExpoFilters ? 'Hide filters' : 'Show filters'}
+                      </ThemedText>
+                    </TouchableOpacity>
+                    {showExpoFilters && (
+                      <>
+                        <View style={[styles.searchBarContainer, { backgroundColor: cardBackground, borderColor }]}>
+                          <MaterialIcons name="search" size={20} color={colors.icon} />
+                          <TextInput
+                            style={[styles.searchInput, { color: colors.text }]}
+                            placeholder="Search registrations"
+                            placeholderTextColor={colors.icon}
+                            value={expoSearchInput}
+                            onChangeText={setExpoSearchInput}
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            returnKeyType="search"
+                          />
+                          {expoSearchInput.length > 0 && (
+                            <TouchableOpacity
+                              onPress={() => setExpoSearchInput('')}
+                              accessibilityLabel="Clear registration search">
+                              <MaterialIcons name="close" size={20} color={colors.icon} />
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                        <View style={[styles.searchBarContainer, { backgroundColor: cardBackground, borderColor }]}>
+                          <MaterialIcons name="group" size={20} color={colors.icon} />
+                          <TextInput
+                            style={[styles.searchInput, { color: colors.text }]}
+                            placeholder="Filter by Group Name"
+                            placeholderTextColor={colors.icon}
+                            value={expoFieldFilters.groupName ?? ''}
+                            onChangeText={(value) => updateExpoFieldFilter('groupName', value)}
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            returnKeyType="done"
+                          />
+                        </View>
+                        <View style={styles.filterPills}>
+                          <TouchableOpacity
+                            style={[
+                              styles.filterPill,
+                              {
+                                backgroundColor: colors.buttonSecondary,
+                                borderColor,
+                              },
+                            ]}
+                            onPress={promptExpoDesignationFilter}
+                            activeOpacity={0.8}>
+                            <ThemedText style={[styles.filterPillText, { color: colors.buttonSecondaryText }]}>
+                              {expoFieldFilters.designation?.trim()
+                                ? `Designation: ${expoFieldFilters.designation}`
+                                : 'Designation: All'}
+                            </ThemedText>
+                          </TouchableOpacity>
+                        </View>
+                        <View style={[styles.searchBarContainer, { backgroundColor: cardBackground, borderColor }]}>
+                          <MaterialIcons name="person" size={20} color={colors.icon} />
+                          <TextInput
+                            style={[styles.searchInput, { color: colors.text }]}
+                            placeholder="Filter by Group Leader Name"
+                            placeholderTextColor={colors.icon}
+                            value={expoFieldFilters.groupLeaderName ?? ''}
+                            onChangeText={(value) => updateExpoFieldFilter('groupLeaderName', value)}
+                            autoCapitalize="words"
+                            autoCorrect={false}
+                            returnKeyType="done"
+                          />
+                        </View>
+                        <View style={[styles.searchBarContainer, { backgroundColor: cardBackground, borderColor }]}>
+                          <MaterialIcons name="person-outline" size={20} color={colors.icon} />
+                          <TextInput
+                            style={[styles.searchInput, { color: colors.text }]}
+                            placeholder="Filter by Your Name"
+                            placeholderTextColor={colors.icon}
+                            value={expoFieldFilters.yourName ?? ''}
+                            onChangeText={(value) => updateExpoFieldFilter('yourName', value)}
+                            autoCapitalize="words"
+                            autoCorrect={false}
+                            returnKeyType="done"
+                          />
+                        </View>
+                        <View style={[styles.searchBarContainer, { backgroundColor: cardBackground, borderColor }]}>
+                          <MaterialIcons name="phone" size={20} color={colors.icon} />
+                          <TextInput
+                            style={[styles.searchInput, { color: colors.text }]}
+                            placeholder="Filter by Phone Number"
+                            placeholderTextColor={colors.icon}
+                            value={expoFieldFilters.phoneNumber ?? ''}
+                            onChangeText={(value) => updateExpoFieldFilter('phoneNumber', value)}
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            keyboardType="phone-pad"
+                            returnKeyType="done"
+                          />
+                        </View>
+                        {(expoSearchInput.length > 0 ||
+                          Object.values(expoFieldFilters).some((value) => (value ?? '').trim().length > 0)) && (
+                            <TouchableOpacity
+                              style={[styles.filterPill, { alignSelf: 'flex-start', backgroundColor: colors.buttonSecondary, borderColor }]}
+                              onPress={() => {
+                                setExpoSearchInput('');
+                                setExpoSearchQuery('');
+                                setExpoFieldFilters({
+                                  groupName: '',
+                                  designation: '',
+                                  groupLeaderName: '',
+                                  yourName: '',
+                                  phoneNumber: '',
+                                });
+                              }}
+                              accessibilityLabel="Clear registration filters">
+                              <ThemedText style={[styles.filterPillText, { color: colors.buttonSecondaryText }]}>
+                                Clear filters
+                              </ThemedText>
+                            </TouchableOpacity>
+                          )}
+                      </>
+                    )}
                     <View style={styles.section}>
                       {displayedExpoRegistrations.map((registration: ExpoRegistration, eIndex: number) => {
                         const expoRowId = (expoPage - 1) * limit + eIndex + 1;
@@ -1879,6 +2276,22 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 2,
     marginBottom: 16,
+  },
+  filterIconButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 12,
+    alignSelf: 'flex-start',
+  },
+  filterIconButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   pdfDownloadButtonText: {
     fontSize: 15,
