@@ -131,3 +131,15 @@ export type ExpoFieldFilters = {
   yourName?: string;
   phoneNumber?: string;
 };
+
+export interface ManifestoUser {
+  id: string;
+  fullName: string;
+  phone: string;
+  createdAt: string;
+}
+
+export interface ManifestoUsersResponse {
+  message: string;
+  data: ManifestoUser[];
+}

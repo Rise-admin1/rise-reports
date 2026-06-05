@@ -1,7 +1,7 @@
-import { CustomDrawer } from '@/components/custom-drawer';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
+import { useThemePreference } from '@/context/theme-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   deleteExpoRegistrationById,
@@ -9,22 +9,19 @@ import {
   fetchAllExpoRegistrationsForPdf,
   fetchAllFunyulaReportsForPdf,
   fetchAllFunyulaVolunteersForPdf,
-  fetchAllRiseInvestorsForPdf,
-  fetchAllRiseProfileReportsForPdf,
   fetchExpoRegistrations,
   fetchFunyulaReports,
   fetchFunyulaVolunteers,
-  fetchRiseInvestors,
-  fetchRiseProfileReports,
+  fetchManifestoUsers,
 } from '@/services/api';
 import {
   ExpoRegistration,
   ExpoFieldFilters,
   ExpoRegistrationsResponse,
   FunyulaReportsResponse,
+  ManifestoUser,
+  ManifestoUsersResponse,
   Payment,
-  RiseReportItem,
-  RiseReportsResponse,
   Volunteer,
   VolunteerFieldFilters,
   VolunteerGenderFilter,
@@ -34,17 +31,16 @@ import {
 import {
   buildFunyulaContributionsPdfHtml,
   buildFunyulaVolunteersPdfHtml,
-  buildRiseReportPdfHtml,
   buildSamiaWomenPdfHtml,
   exportHtmlToPdf,
 } from '@/utils/reportPdf';
 import { formatVolunteerGender, formatVolunteerRole } from '@/utils/volunteerDisplay';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Linking,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -53,10 +49,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-export default function HomeScreen() {
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [selectedReportType, setSelectedReportType] = useState<'funyula' | 'rise' | null>(null);
-  const [funyulaReportType, setFunyulaReportType] = useState<'contributions' | 'volunteer' | 'samia-women' | null>(
+export default function FunyulaScreen() {
+  const [funyulaReportType, setFunyulaReportType] = useState<
+    'contributions' | 'volunteer' | 'samia-women' | 'manifesto-users' | null
+  >(
     null
   );
   const [reportsData, setReportsData] = useState<FunyulaReportsResponse | null>(null);
@@ -98,48 +94,19 @@ export default function HomeScreen() {
   const [showExpoFilters, setShowExpoFilters] = useState(false);
   const [deletingVolunteerId, setDeletingVolunteerId] = useState<string | null>(null);
   const [deletingExpoId, setDeletingExpoId] = useState<string | null>(null);
+  const [manifestoUsersData, setManifestoUsersData] = useState<ManifestoUsersResponse | null>(null);
+  const [manifestoUsersLoading, setManifestoUsersLoading] = useState(false);
+  const [manifestoUsersError, setManifestoUsersError] = useState<string | null>(null);
 
-  const [riseReportType, setRiseReportType] = useState<'profile-reports' | 'rise-investors' | null>(null);
-  const [riseData, setRiseData] = useState<RiseReportsResponse | null>(null);
-  const [riseLoading, setRiseLoading] = useState(false);
-  const [riseError, setRiseError] = useState<string | null>(null);
-  const riseLimit = 10;
   const [pdfExporting, setPdfExporting] = useState(false);
+  const router = useRouter();
   const colorScheme = useColorScheme();
+  const { toggleTheme } = useThemePreference();
   const colors = Colors[colorScheme ?? 'light'];
   const backgroundColor = colors.background;
   const cardBackground = colors.card;
   const borderColor = colors.border;
 
-  useEffect(() => {
-    if (selectedReportType === 'funyula') {
-      setFunyulaReportType(null);
-      setReportsData(null);
-      setError(null);
-      setVolunteersData(null);
-      setVolunteersError(null);
-      setVolunteersPage(1);
-      setExpoRegistrationsData(null);
-      setExpoRegistrationsError(null);
-      setExpoPage(1);
-      setRiseReportType(null);
-      setRiseData(null);
-      setRiseError(null);
-    } else if (selectedReportType === 'rise') {
-      setFunyulaReportType(null);
-      setReportsData(null);
-      setError(null);
-      setVolunteersData(null);
-      setVolunteersError(null);
-      setVolunteersPage(1);
-      setExpoRegistrationsData(null);
-      setExpoRegistrationsError(null);
-      setExpoPage(1);
-      setRiseReportType(null);
-      setRiseData(null);
-      setRiseError(null);
-    }
-  }, [selectedReportType]);
 
   const loadFunyulaReports = async ({ nextPage }: { nextPage: number }) => {
     setLoading(true);
@@ -191,6 +158,19 @@ export default function HomeScreen() {
       setExpoRegistrationsError(err instanceof Error ? err.message : 'Failed to load Samia women registrations');
     } finally {
       setExpoRegistrationsLoading(false);
+    }
+  };
+
+  const loadManifestoUsers = async () => {
+    setManifestoUsersLoading(true);
+    setManifestoUsersError(null);
+    try {
+      const data = await fetchManifestoUsers();
+      setManifestoUsersData(data);
+    } catch (err) {
+      setManifestoUsersError(err instanceof Error ? err.message : 'Failed to load manifesto users');
+    } finally {
+      setManifestoUsersLoading(false);
     }
   };
 
@@ -246,31 +226,7 @@ export default function HomeScreen() {
     ]);
   };
 
-  const handleMenuItemSelect = (menuItem: 'funyula' | 'rise') => {
-    setSelectedReportType(menuItem);
-  };
 
-  const loadRiseReport = async (type: 'profile-reports' | 'rise-investors', nextPage: number = 1) => {
-    if (nextPage < 1) return;
-    setRiseLoading(true);
-    setRiseError(null);
-    try {
-      const data =
-        type === 'profile-reports'
-          ? await fetchRiseProfileReports(nextPage, riseLimit)
-          : await fetchRiseInvestors(nextPage, riseLimit);
-      setRiseData(data);
-    } catch (err) {
-      setRiseError(err instanceof Error ? err.message : 'Failed to load RISE report');
-    } finally {
-      setRiseLoading(false);
-    }
-  };
-
-  const handleRiseReportTypeSelect = (type: 'profile-reports' | 'rise-investors') => {
-    setRiseReportType(type);
-    loadRiseReport(type, 1);
-  };
 
   const formatRiseDate = (dateString: string) => {
     try {
@@ -399,7 +355,7 @@ export default function HomeScreen() {
   };
 
   const basePayments =
-    selectedReportType === 'funyula' && reportsData
+    reportsData
       ? showSuccessOnly
         ? reportsData.data.payments.filter((p) => p.status === 'success')
         : reportsData.data.payments
@@ -415,9 +371,9 @@ export default function HomeScreen() {
   const displayedExpoRegistrations = expoRegistrationsData?.data ?? [];
 
   useEffect(() => {
-    if (selectedReportType !== 'funyula' || funyulaReportType !== 'samia-women') return;
+    if (funyulaReportType !== 'samia-women') return;
     void loadExpoPage(1);
-  }, [selectedReportType, funyulaReportType, expoSearchQuery, expoFieldFilters]);
+  }, [funyulaReportType, expoSearchQuery, expoFieldFilters]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -434,10 +390,9 @@ export default function HomeScreen() {
   }, [volunteerSearchInput]);
 
   useEffect(() => {
-    if (selectedReportType !== 'funyula' || funyulaReportType !== 'volunteer') return;
+    if (funyulaReportType !== 'volunteer') return;
     void loadVolunteersPage(1);
   }, [
-    selectedReportType,
     funyulaReportType,
     volunteerRoleFilter,
     volunteerGenderFilter,
@@ -449,42 +404,48 @@ export default function HomeScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
       <ThemedView style={[styles.header, { borderBottomColor: borderColor }]}>
         <TouchableOpacity
-          style={styles.menuButton}
-          onPress={() => setDrawerOpen(true)}
-          accessibilityLabel="Open menu">
-          <MaterialIcons name="menu" size={28} color={colors.text} />
+          onPress={() => (funyulaReportType === null ? router.back() : undefined)}
+          disabled={funyulaReportType !== null}
+          style={styles.headerTitleWrap}
+          accessibilityLabel="Back to home">
+          <ThemedText type="title" style={styles.headerTitle}>
+            Funyula
+          </ThemedText>
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.headerTitle}>
-          Reports
-        </ThemedText>
-        {selectedReportType && (
-          <View style={[styles.badge, { backgroundColor: colors.tint }]}>
-            <ThemedText style={[styles.badgeText, { color: colors.tintText }]}>
-              {selectedReportType === 'funyula' ? 'Funyula' : 'RISE'}
-            </ThemedText>
-          </View>
-        )}
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={[styles.themeButton, { borderColor: borderColor, backgroundColor: cardBackground }]}
+            onPress={toggleTheme}
+            accessibilityLabel={`Switch to ${colorScheme === 'dark' ? 'light' : 'dark'} mode`}>
+            <MaterialIcons
+              name={colorScheme === 'dark' ? 'light-mode' : 'dark-mode'}
+              size={18}
+              color={colors.text}
+            />
+          </TouchableOpacity>
+
+        </View>
       </ThemedView>
 
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}>
-        {loading && selectedReportType === 'funyula' && funyulaReportType === 'contributions' && (
+        {loading && funyulaReportType === 'contributions' && (
           <View style={styles.centerContainer}>
             <ActivityIndicator size="large" color={colors.tint} />
             <ThemedText style={styles.loadingText}>Loading reports...</ThemedText>
           </View>
         )}
 
-        {error && selectedReportType === 'funyula' && funyulaReportType === 'contributions' && (
+        {error && funyulaReportType === 'contributions' && (
           <View style={[styles.errorContainer, { backgroundColor: colors.errorMuted, borderColor: colors.error }]}>
             <MaterialIcons name="error-outline" size={24} color={colors.errorText} />
             <ThemedText style={[styles.errorText, { color: colors.errorText }]}>Error: {error}</ThemedText>
           </View>
         )}
 
-        {selectedReportType === 'funyula' && funyulaReportType !== null && (
+        {funyulaReportType !== null && (
           <View style={[styles.riseReportHeader, { borderBottomColor: borderColor }]}>
             <TouchableOpacity
               onPress={() => {
@@ -522,6 +483,9 @@ export default function HomeScreen() {
                   yourName: '',
                   phoneNumber: '',
                 });
+                setManifestoUsersData(null);
+                setManifestoUsersError(null);
+                setManifestoUsersLoading(false);
               }}
               style={styles.riseBackRow}>
               <MaterialIcons name="arrow-back" size={24} color={colors.text} />
@@ -530,13 +494,23 @@ export default function HomeScreen() {
                   ? 'Funyula Contributions'
                   : funyulaReportType === 'volunteer'
                     ? 'Funyula Volunteer'
-                    : 'Samia Women Registration'}
+                    : funyulaReportType === 'samia-women'
+                      ? 'Samia Women Registration'
+                      : 'Get User Manifesto'}
               </ThemedText>
             </TouchableOpacity>
           </View>
         )}
 
-        {selectedReportType === 'funyula' && funyulaReportType === null && (
+        {funyulaReportType === null && (
+          <>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={[styles.riseBackRow, { marginBottom: 16 }]}
+              accessibilityLabel="Back to home">
+              <MaterialIcons name="arrow-back" size={24} color={colors.text} />
+              <ThemedText style={styles.riseBackText}>Back to reports</ThemedText>
+            </TouchableOpacity>
           <View style={styles.riseReportChoice}>
             <ThemedText type="subtitle" style={styles.riseReportChoiceTitle}>
               Choose a Funyula report
@@ -611,10 +585,30 @@ export default function HomeScreen() {
               </View>
               <MaterialIcons name="chevron-right" size={24} color={colors.icon} />
             </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.riseReportCard, { backgroundColor: cardBackground, borderColor }]}
+              onPress={() => {
+                setFunyulaReportType('manifesto-users');
+                setManifestoUsersData(null);
+                setManifestoUsersError(null);
+                setManifestoUsersLoading(false);
+                void loadManifestoUsers();
+              }}
+              activeOpacity={0.85}>
+              <View style={styles.riseReportCardContent}>
+                <MaterialIcons name="fact-check" size={32} color={colors.tint} />
+                <ThemedText type="subtitle" style={styles.riseReportCardTitle}>
+                  Get User Manifesto
+                </ThemedText>
+                <ThemedText style={styles.riseReportCardDesc}>GET /volunteer/get-manifesto-users</ThemedText>
+              </View>
+              <MaterialIcons name="chevron-right" size={24} color={colors.icon} />
+            </TouchableOpacity>
           </View>
+          </>
         )}
 
-        {!loading && !error && selectedReportType === 'funyula' && funyulaReportType === 'contributions' && reportsData && (
+        {!loading && !error && funyulaReportType === 'contributions' && reportsData && (
           <>
             <TouchableOpacity
               style={[
@@ -926,7 +920,7 @@ export default function HomeScreen() {
           </>
         )}
 
-        {selectedReportType === 'funyula' && funyulaReportType === 'volunteer' && (
+        {funyulaReportType === 'volunteer' && (
           <>
             {volunteersLoading && !volunteersData ? (
               <View style={styles.centerContainer}>
@@ -1231,7 +1225,7 @@ export default function HomeScreen() {
           </>
         )}
 
-        {selectedReportType === 'funyula' && funyulaReportType === 'samia-women' && (
+        {funyulaReportType === 'samia-women' && (
           <>
             {expoRegistrationsLoading && !expoRegistrationsData ? (
               <View style={styles.centerContainer}>
@@ -1547,208 +1541,65 @@ export default function HomeScreen() {
           </>
         )}
 
-        {!loading && !error && selectedReportType === 'rise' && (
+        {funyulaReportType === 'manifesto-users' && (
           <>
-            {riseReportType === null ? (
-              <View style={styles.riseReportChoice}>
-                <ThemedText type="subtitle" style={styles.riseReportChoiceTitle}>
-                  Choose a RISE report
-                </ThemedText>
-                <TouchableOpacity
-                  style={[styles.riseReportCard, { backgroundColor: cardBackground, borderColor }]}
-                  onPress={() => handleRiseReportTypeSelect('profile-reports')}
-                  activeOpacity={0.85}>
-                  <View style={styles.riseReportCardContent}>
-                    <MaterialIcons name="person" size={32} color={colors.tint} />
-                    <ThemedText type="subtitle" style={styles.riseReportCardTitle}>
-                      Profile reports
-                    </ThemedText>
-                    <ThemedText style={styles.riseReportCardDesc}>
-                      GET /get-profile-reports
-                    </ThemedText>
-                  </View>
-                  <MaterialIcons name="chevron-right" size={24} color={colors.icon} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.riseReportCard, { backgroundColor: cardBackground, borderColor }]}
-                  onPress={() => handleRiseReportTypeSelect('rise-investors')}
-                  activeOpacity={0.85}>
-                  <View style={styles.riseReportCardContent}>
-                    <MaterialIcons name="groups" size={32} color={colors.tint} />
-                    <ThemedText type="subtitle" style={styles.riseReportCardTitle}>
-                      Rise investors
-                    </ThemedText>
-                    <ThemedText style={styles.riseReportCardDesc}>
-                      GET /get-rise-investors
-                    </ThemedText>
-                  </View>
-                  <MaterialIcons name="chevron-right" size={24} color={colors.icon} />
-                </TouchableOpacity>
-              </View>
-            ) : riseLoading && !riseData ? (
+            {manifestoUsersLoading && !manifestoUsersData ? (
               <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={colors.tint} />
-                <ThemedText style={styles.loadingText}>Loading RISE report…</ThemedText>
+                <ThemedText style={styles.loadingText}>Loading manifesto users…</ThemedText>
               </View>
             ) : (
               <>
-                {riseError && (
+                {manifestoUsersError && (
                   <View style={[styles.errorContainer, { backgroundColor: colors.errorMuted, borderColor: colors.error }]}>
                     <MaterialIcons name="error-outline" size={24} color={colors.errorText} />
-                    <ThemedText style={[styles.errorText, { color: colors.errorText }]}>Error: {riseError}</ThemedText>
+                    <ThemedText style={[styles.errorText, { color: colors.errorText }]}>Error: {manifestoUsersError}</ThemedText>
                   </View>
                 )}
-                {riseData && (
+                {manifestoUsersData && (
                   <>
-                    <View style={[styles.riseReportHeader, { borderBottomColor: borderColor }]}>
-                      <TouchableOpacity
-                        onPress={() => {
-                          setRiseReportType(null);
-                          setRiseData(null);
-                          setRiseError(null);
-                        }}
-                        style={styles.riseBackRow}>
-                        <MaterialIcons name="arrow-back" size={24} color={colors.text} />
-                        <ThemedText style={styles.riseBackText}>
-                          {riseReportType === 'profile-reports' ? 'Profile reports' : 'Rise investors'}
-                        </ThemedText>
-                      </TouchableOpacity>
-                    </View>
-                    <TouchableOpacity
-                      style={[
-                        styles.pdfDownloadButton,
-                        {
-                          borderColor: colors.tint,
-                          backgroundColor: colors.buttonSecondary,
-                          opacity: pdfExporting ? 0.65 : 1,
-                        },
-                      ]}
-                      onPress={() =>
-                        runPdfExport(
-                          riseReportType === 'profile-reports' ? 'rise_profile_reports' : 'rise_investors',
-                          async () => {
-                            const data =
-                              riseReportType === 'profile-reports'
-                                ? await fetchAllRiseProfileReportsForPdf()
-                                : await fetchAllRiseInvestorsForPdf();
-                            return buildRiseReportPdfHtml(
-                              riseReportType === 'profile-reports' ? 'RISE profile reports' : 'RISE investors',
-                              data
-                            );
-                          }
-                        )
-                      }
-                      activeOpacity={0.85}
-                      disabled={pdfExporting}
-                      accessibilityLabel="Download RISE report as PDF">
-                      {pdfExporting ? (
-                        <ActivityIndicator size="small" color={colors.tint} />
-                      ) : (
-                        <MaterialIcons name="picture-as-pdf" size={22} color={colors.tint} />
-                      )}
-                      <ThemedText style={[styles.pdfDownloadButtonText, { color: colors.tint }]}>
-                        Download as PDF
-                      </ThemedText>
-                    </TouchableOpacity>
                     <View style={styles.section}>
-                      {riseData.data.map((item: RiseReportItem, rIndex: number) => {
-                        const riseRowId = (riseData.pagination.page - 1) * riseLimit + rIndex + 1;
-                        return (
+                      {manifestoUsersData.data.map((user: ManifestoUser, mIndex: number) => (
                         <View
-                          key={item.id}
+                          key={user.id}
                           style={[styles.riseItemCard, { backgroundColor: cardBackground, borderColor }]}>
                           <View style={styles.cardIdRow}>
                             <View style={[styles.cardIdBadge, { backgroundColor: colors.buttonSecondary, borderColor }]}>
                               <ThemedText type="defaultSemiBold" style={[styles.cardIdText, { color: colors.tint }]}>
-                                ID {riseRowId}
+                                ID {mIndex + 1}
                               </ThemedText>
                             </View>
                           </View>
-                          <View style={styles.riseItemRow}>
-                            <ThemedText type="defaultSemiBold" style={styles.riseItemName}>
-                              {item.name}
+                          <View style={styles.volunteerField}>
+                            <ThemedText style={styles.volunteerLabel}>Full Name</ThemedText>
+                            <ThemedText style={styles.volunteerValuePrimary}>{user.fullName}</ThemedText>
+                          </View>
+                          <View style={styles.volunteerField}>
+                            <ThemedText style={styles.volunteerLabel}>Phone</ThemedText>
+                            <ThemedText style={styles.volunteerValueSecondary}>{user.phone}</ThemedText>
+                          </View>
+                          <View style={styles.volunteerField}>
+                            <ThemedText style={styles.volunteerLabel}>Date and Time Registered</ThemedText>
+                            <ThemedText style={styles.volunteerValueSecondary}>
+                              {formatRiseDate(user.createdAt)}
                             </ThemedText>
-                            <ThemedText style={styles.riseItemDate}>{formatRiseDate(item.createdAt)}</ThemedText>
                           </View>
-                          <View style={styles.riseItemRow}>
-                            <MaterialIcons name="email" size={16} color={colors.icon} />
-                            <ThemedText style={styles.riseItemEmail}>{item.email}</ThemedText>
-                          </View>
-                          {item.receipt_url ? (
-                            <TouchableOpacity
-                              style={styles.riseReceiptRow}
-                              onPress={() => Linking.openURL(item.receipt_url)}
-                              activeOpacity={0.8}>
-                              <MaterialIcons name="receipt" size={16} color={colors.tint} />
-                              <ThemedText style={[styles.riseReceiptLink, { color: colors.tint }]} numberOfLines={1}>
-                                {item.receipt_url}
-                              </ThemedText>
-                            </TouchableOpacity>
-                          ) : (
-                            <ThemedText style={styles.riseNoReceipt}>No receipt</ThemedText>
-                          )}
                         </View>
-                      );
-                      })}
+                      ))}
+                      {manifestoUsersData.data.length === 0 && (
+                        <View style={[styles.emptyState, { backgroundColor: cardBackground, borderColor }]}>
+                          <MaterialIcons name="search-off" size={22} color={colors.icon} />
+                          <ThemedText style={styles.emptyStateText}>No manifesto users found.</ThemedText>
+                        </View>
+                      )}
                     </View>
                     <View style={[styles.paginationCard, { backgroundColor: cardBackground, borderColor }]}>
                       <View style={styles.paginationRow}>
                         <MaterialIcons name="list" size={20} color={colors.icon} />
                         <ThemedText style={styles.paginationText}>
-                          {riseData.pagination.total} total · {riseLimit} per page
+                          Total {manifestoUsersData.data.length} manifesto users
                         </ThemedText>
                       </View>
-                    </View>
-                    <View style={styles.paginationNav}>
-                      <TouchableOpacity
-                        style={[
-                          styles.paginationNavButton,
-                          {
-                            backgroundColor: colors.buttonSecondary,
-                            borderColor,
-                            opacity:
-                              riseLoading || !riseReportType || riseData.pagination.page <= 1 ? 0.45 : 1,
-                          },
-                        ]}
-                        onPress={() =>
-                          riseReportType && loadRiseReport(riseReportType, riseData.pagination.page - 1)
-                        }
-                        disabled={riseLoading || !riseReportType || riseData.pagination.page <= 1}
-                        accessibilityLabel="Previous page">
-                        <MaterialIcons name="chevron-left" size={22} color={colors.text} />
-                        <ThemedText style={styles.paginationNavLabel}>Previous</ThemedText>
-                      </TouchableOpacity>
-                      <View style={styles.paginationNavCenter}>
-                        <ThemedText style={styles.paginationNavPageText}>
-                          Page {riseData.pagination.page} of {riseData.pagination.totalPages}
-                        </ThemedText>
-                      </View>
-                      <TouchableOpacity
-                        style={[
-                          styles.paginationNavButton,
-                          {
-                            backgroundColor: colors.buttonSecondary,
-                            borderColor,
-                            opacity:
-                              riseLoading ||
-                              !riseReportType ||
-                              riseData.pagination.page >= riseData.pagination.totalPages
-                                ? 0.45
-                                : 1,
-                          },
-                        ]}
-                        onPress={() =>
-                          riseReportType && loadRiseReport(riseReportType, riseData.pagination.page + 1)
-                        }
-                        disabled={
-                          riseLoading ||
-                          !riseReportType ||
-                          riseData.pagination.page >= riseData.pagination.totalPages
-                        }
-                        accessibilityLabel="Next page">
-                        <ThemedText style={styles.paginationNavLabel}>Next</ThemedText>
-                        <MaterialIcons name="chevron-right" size={22} color={colors.text} />
-                      </TouchableOpacity>
                     </View>
                   </>
                 )}
@@ -1757,24 +1608,7 @@ export default function HomeScreen() {
           </>
         )}
 
-        {!loading && !error && !selectedReportType && (
-          <View style={styles.centerContainer}>
-            <MaterialIcons name="dashboard" size={64} color={colors.icon} />
-            <ThemedText type="subtitle" style={styles.emptyTitle}>
-              Select a Report Type
-            </ThemedText>
-            <ThemedText style={styles.emptyText}>
-              Choose Funyula or RISE from the menu to view reports.
-            </ThemedText>
-          </View>
-        )}
       </ScrollView>
-
-      <CustomDrawer
-        isOpen={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        onMenuItemSelect={handleMenuItemSelect}
-      />
     </SafeAreaView>
   );
 }
@@ -1795,15 +1629,25 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  menuButton: {
-    padding: 8,
-    marginRight: 12,
-    borderRadius: 8,
+  headerTitleWrap: {
+    flex: 1,
   },
   headerTitle: {
-    flex: 1,
     fontSize: 24,
     fontWeight: '700',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  themeButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   badge: {
     paddingHorizontal: 12,
@@ -2165,6 +2009,27 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
+  homeReportCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 16,
+  },
+  homeReportCardImageContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  homeReportCardImage: {
+    width: 48,
+    height: 48,
+  },
+  homeReportCardTitle: {
+    marginTop: 0,
+  },
   riseReportCardContent: {
     flex: 1,
   },
@@ -2233,12 +2098,10 @@ const styles = StyleSheet.create({
   volunteerValuePrimary: {
     fontSize: 16,
     fontWeight: '600',
-    color: 'black',
   },
   volunteerValueSecondary: {
     fontSize: 14,
     fontWeight: '600',
-    color: 'black',
   },
   riseReceiptRow: {
     flexDirection: 'row',

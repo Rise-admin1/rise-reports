@@ -127,8 +127,11 @@ export function TaskModal({ visible, mode, initialValue, onClose, onSubmit, apiE
                 onChangeText={setTitle}
                 placeholder="Short title"
                 placeholderTextColor={colors.icon}
+                multiline
+                numberOfLines={4}
                 style={[
                   styles.input,
+                  styles.titleInput,
                   { borderColor: colors.border, color: colors.text, backgroundColor: colors.background },
                 ]}
               />
@@ -455,6 +458,10 @@ const styles = StyleSheet.create({
   },
   textArea: {
     minHeight: 110,
+    textAlignVertical: 'top',
+  },
+  titleInput: {
+    minHeight: 64,
     textAlignVertical: 'top',
   },
   dropdownTrigger: {

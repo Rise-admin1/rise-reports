@@ -2,7 +2,7 @@ export type TaskAssignee = 'Michael' | 'Mark' | 'Enock' | 'Alen';
 
 export type TaskAsset =
   | 'Coachacadem'
-  | 'PhD Success'
+  | 'PhD Success AE'
   | 'Corpink'
   | 'Funyula'
   | 'Velo'
@@ -23,7 +23,7 @@ export type Task = {
 
 export const TASK_ASSETS: TaskAsset[] = [
   'Coachacadem',
-  'PhD Success',
+  'PhD Success AE',
   'Corpink',
   'Funyula',
   'Velo',

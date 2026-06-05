@@ -2,6 +2,7 @@ import {
   ExpoFieldFilters,
   ExpoRegistrationsResponse,
   FunyulaReportsResponse,
+  ManifestoUsersResponse,
   RiseReportItem,
   RiseReportsResponse,
   VolunteerFieldFilters,
@@ -9,10 +10,29 @@ import {
   VolunteerRoleFilter,
   VolunteersResponse,
 } from '@/types/reports';
+import {
+  AvailabilitySettingInput,
+  SchedulingAppSource,
+  SchedulingAvailabilitySettingResponse,
+  SchedulingAvailabilitySettingsResponse,
+  SchedulingBookingStatsResponse,
+  SchedulingInviteResponse,
+  SchedulingInviteType,
+  SchedulingMeetingResponse,
+  SchedulingMeetingsResponse,
+  SchedulingMetricsResponse,
+} from '@/types/scheduling';
 import { Task, TaskAsset, TaskAssignee, TaskStatus } from '@/types/tasks';
+import { FetchVaultDocumentsResponse, VaultDocument } from '@/types/vault';
 
 const API_BASE_URL = 'https://future.funyula.com/api';
 // const API_BASE_URL = 'http://localhost:3001/api';
+
+
+// const SCHEDULING_API_BASE_URL = 'http://localhost:3001/api';
+const SCHEDULING_API_BASE_URL = 'https://future.funyula.com/api';
+
+
 /** Base URL for RISE endpoints (Profile reports, Rise investors) */
 const RISE_API_BASE_URL = 'https://react-journal1.onrender.com/api/rise';
 
@@ -139,6 +159,21 @@ export async function fetchExpoRegistrations(
   } catch (error) {
     throw new Error(
       `Failed to fetch Samia women registrations: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+export async function fetchManifestoUsers(): Promise<ManifestoUsersResponse> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/volunteer/get-manifesto-users`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data: ManifestoUsersResponse = await response.json();
+    return data;
+  } catch (error) {
+    throw new Error(
+      `Failed to fetch manifesto users: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
   }
 }
@@ -600,4 +635,313 @@ export async function deleteTask(payload: { id: string }): Promise<{ success: bo
   }
 
   return (await response.json()) as { success: boolean; data: { id: string } };
+}
+
+export async function fetchVaultDocuments(params: {
+  page?: number;
+  limit?: number;
+} = {}): Promise<FetchVaultDocumentsResponse> {
+  const query = new URLSearchParams();
+  query.set('page', String(params.page ?? 1));
+  query.set('limit', String(params.limit ?? 20));
+
+  const response = await fetch(`${API_BASE_URL}/rise-reports/vault/documents?${query.toString()}`);
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  return (await response.json()) as FetchVaultDocumentsResponse;
+}
+
+export async function fetchVaultDocumentViewUrl(
+  id: string
+): Promise<{ success: boolean; data: { viewUrl: string; expiresIn: number } }> {
+  const response = await fetch(`${API_BASE_URL}/rise-reports/vault/documents/${encodeURIComponent(id)}/view-url`);
+  if (!response.ok) {
+    const errBody = (await response.json().catch(() => null)) as { message?: string } | null;
+    throw new Error(errBody?.message || `HTTP error! status: ${response.status}`);
+  }
+  return (await response.json()) as { success: boolean; data: { viewUrl: string; expiresIn: number } };
+}
+
+export async function uploadVaultDocument(payload: {
+  uri: string;
+  name: string;
+  mimeType: string;
+  title?: string;
+}): Promise<{ success: boolean; data: { document: VaultDocument } }> {
+  const form = new FormData();
+  form.append('file', {
+    uri: payload.uri,
+    name: payload.name,
+    type: payload.mimeType,
+  } as unknown as Blob);
+  if (payload.title?.trim()) {
+    form.append('title', payload.title.trim());
+  }
+
+  const response = await fetch(`${API_BASE_URL}/rise-reports/vault/documents`, {
+    method: 'POST',
+    body: form,
+  });
+
+  if (!response.ok) {
+    const errBody = (await response.json().catch(() => null)) as { message?: string } | null;
+    throw new Error(errBody?.message || `HTTP error! status: ${response.status}`);
+  }
+
+  return (await response.json()) as { success: boolean; data: { document: VaultDocument } };
+}
+
+export async function deleteVaultDocument(payload: {
+  id: string;
+}): Promise<{ success: boolean; data: { id: string } }> {
+  const response = await fetch(`${API_BASE_URL}/rise-reports/vault/documents`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  return (await response.json()) as { success: boolean; data: { id: string } };
+}
+
+export async function fetchSchedulingMetrics(params: {
+  appSource: SchedulingAppSource;
+  completedOffset?: number;
+  upcomingOffset?: number;
+  limit?: number;
+}): Promise<SchedulingMetricsResponse> {
+  try {
+    const completedOffset = params.completedOffset ?? 0;
+    const upcomingOffset = params.upcomingOffset ?? 0;
+    const limit = params.limit ?? 10;
+    const query = new URLSearchParams({
+      appSource: params.appSource,
+      completedOffset: String(completedOffset),
+      upcomingOffset: String(upcomingOffset),
+      limit: String(limit),
+    });
+    const response = await fetch(`${SCHEDULING_API_BASE_URL}/scheduling/metrics?${query.toString()}`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return (await response.json()) as SchedulingMetricsResponse;
+  } catch (error) {
+    throw new Error(
+      `Failed to fetch calendar metrics: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+export async function fetchSchedulingBookingStats(
+  email: string,
+  appSource: SchedulingAppSource
+): Promise<SchedulingBookingStatsResponse> {
+  try {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      throw new Error('Email is required');
+    }
+    const query = new URLSearchParams({ email: trimmedEmail, appSource });
+    const response = await fetch(`${SCHEDULING_API_BASE_URL}/scheduling/booking-stats?${query.toString()}`);
+    if (!response.ok) {
+      const text = await response.text();
+      let message = `HTTP error! status: ${response.status}`;
+      try {
+        const parsed = JSON.parse(text) as { message?: string };
+        if (parsed.message) message = parsed.message;
+      } catch {
+        // keep default message
+      }
+      throw new Error(message);
+    }
+    return (await response.json()) as SchedulingBookingStatsResponse;
+  } catch (error) {
+    throw new Error(
+      `Failed to fetch booking stats: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+async function parseSchedulingError(response: Response, fallback: string): Promise<never> {
+  const text = await response.text();
+  let message = fallback;
+  try {
+    const parsed = JSON.parse(text) as { message?: string };
+    if (parsed.message) message = parsed.message;
+  } catch {
+    message = `${fallback} (${response.status})`;
+  }
+  throw new Error(message);
+}
+
+export async function fetchAvailabilitySettings(): Promise<SchedulingAvailabilitySettingsResponse> {
+  try {
+    const response = await fetch(`${SCHEDULING_API_BASE_URL}/scheduling/availability-settings`);
+    if (!response.ok) {
+      await parseSchedulingError(response, `HTTP error! status: ${response.status}`);
+    }
+    return (await response.json()) as SchedulingAvailabilitySettingsResponse;
+  } catch (error) {
+    throw new Error(
+      `Failed to fetch availability settings: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+export async function createAvailabilitySetting(
+  payload: AvailabilitySettingInput
+): Promise<SchedulingAvailabilitySettingResponse> {
+  try {
+    const response = await fetch(`${SCHEDULING_API_BASE_URL}/scheduling/availability-settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      await parseSchedulingError(response, `HTTP error! status: ${response.status}`);
+    }
+    return (await response.json()) as SchedulingAvailabilitySettingResponse;
+  } catch (error) {
+    throw new Error(
+      `Failed to create availability: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+export async function updateAvailabilitySetting(
+  id: string,
+  payload: AvailabilitySettingInput
+): Promise<SchedulingAvailabilitySettingResponse> {
+  try {
+    const response = await fetch(
+      `${SCHEDULING_API_BASE_URL}/scheduling/availability-settings/${encodeURIComponent(id)}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }
+    );
+    if (!response.ok) {
+      await parseSchedulingError(response, `HTTP error! status: ${response.status}`);
+    }
+    return (await response.json()) as SchedulingAvailabilitySettingResponse;
+  } catch (error) {
+    throw new Error(
+      `Failed to update availability: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+export async function deleteAvailabilitySetting(id: string): Promise<{ success: boolean; id: string }> {
+  try {
+    const response = await fetch(
+      `${SCHEDULING_API_BASE_URL}/scheduling/availability-settings/${encodeURIComponent(id)}`,
+      { method: 'DELETE' }
+    );
+    if (!response.ok) {
+      await parseSchedulingError(response, `HTTP error! status: ${response.status}`);
+    }
+    return (await response.json()) as { success: boolean; id: string };
+  } catch (error) {
+    throw new Error(
+      `Failed to delete availability: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+export async function createSchedulingInvite(payload: {
+  email: string;
+  type: SchedulingInviteType;
+  appSource: SchedulingAppSource;
+}): Promise<SchedulingInviteResponse> {
+  try {
+    const response = await fetch(`${SCHEDULING_API_BASE_URL}/scheduling/invites`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      await parseSchedulingError(response, `HTTP error! status: ${response.status}`);
+    }
+    return (await response.json()) as SchedulingInviteResponse;
+  } catch (error) {
+    throw new Error(
+      `Failed to create appointment invite: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+export async function fetchManageableMeetings(params: {
+  appSource: SchedulingAppSource;
+  offset?: number;
+  limit?: number;
+}): Promise<SchedulingMeetingsResponse> {
+  try {
+    const offset = params.offset ?? 0;
+    const limit = params.limit ?? 20;
+    const query = new URLSearchParams({
+      appSource: params.appSource,
+      offset: String(offset),
+      limit: String(limit),
+    });
+    const response = await fetch(`${SCHEDULING_API_BASE_URL}/scheduling/meetings?${query.toString()}`);
+    if (!response.ok) {
+      await parseSchedulingError(response, `HTTP error! status: ${response.status}`);
+    }
+    return (await response.json()) as SchedulingMeetingsResponse;
+  } catch (error) {
+    throw new Error(
+      `Failed to fetch meetings: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+export async function cancelSchedulingMeeting(
+  id: string,
+  appSource: SchedulingAppSource
+): Promise<SchedulingMeetingResponse> {
+  try {
+    const query = new URLSearchParams({ appSource });
+    const response = await fetch(
+      `${SCHEDULING_API_BASE_URL}/scheduling/meetings/${encodeURIComponent(id)}/cancel?${query.toString()}`,
+      { method: 'POST' }
+    );
+    if (!response.ok) {
+      await parseSchedulingError(response, `HTTP error! status: ${response.status}`);
+    }
+    return (await response.json()) as SchedulingMeetingResponse;
+  } catch (error) {
+    throw new Error(
+      `Failed to cancel meeting: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+export async function rescheduleSchedulingMeeting(
+  id: string,
+  payload: { startTime: string; availabilityId?: string; appSource: SchedulingAppSource }
+): Promise<SchedulingMeetingResponse> {
+  try {
+    const response = await fetch(
+      `${SCHEDULING_API_BASE_URL}/scheduling/meetings/${encodeURIComponent(id)}/reschedule`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }
+    );
+    if (!response.ok) {
+      await parseSchedulingError(response, `HTTP error! status: ${response.status}`);
+    }
+    return (await response.json()) as SchedulingMeetingResponse;
+  } catch (error) {
+    throw new Error(
+      `Failed to reschedule meeting: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
 }

@@ -5,6 +5,7 @@ import { TaskModal } from '@/components/task-modal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
+import { useThemePreference } from '@/context/theme-context';
 import {
   createTask as apiCreateTask,
   deleteTask as apiDeleteTask,
@@ -28,6 +29,7 @@ type Draft = {
 
 export default function TaskScreen() {
   const scheme = useColorScheme();
+  const { toggleTheme } = useThemePreference();
   const colors = Colors[scheme ?? 'light'];
 
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -282,6 +284,20 @@ export default function TaskScreen() {
             </View>
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel={`Switch to ${scheme === 'dark' ? 'light' : 'dark'} mode`}
+              onPress={toggleTheme}
+              style={({ pressed }) => [
+                styles.themeButton,
+                {
+                  backgroundColor: colors.buttonSecondary,
+                  borderColor: colors.border,
+                  opacity: pressed ? 0.85 : 1,
+                },
+              ]}>
+              <MaterialIcons name={scheme === 'dark' ? 'light-mode' : 'dark-mode'} size={18} color={colors.text} />
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
               accessibilityLabel="Filter tasks"
               onPress={() => setFilterModalVisible(true)}
               style={({ pressed }) => [
@@ -412,6 +428,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     opacity: 0.8,
+  },
+  themeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   filterButton: {
     flexDirection: 'row',
