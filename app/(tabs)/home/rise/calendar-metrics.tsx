@@ -3,13 +3,14 @@ import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useThemePreference } from '@/context/theme-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { fetchSchedulingMetrics } from '@/services/api';
+import { cancelSchedulingMeeting, fetchSchedulingMetrics } from '@/services/api';
 import type { SchedulingEvent, SchedulingMetricsResponse } from '@/types/scheduling';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Linking,
   RefreshControl,
   ScrollView,
@@ -43,13 +44,22 @@ function EventCard({
   colors,
   cardBackground,
   borderColor,
+  showCancel,
+  onCancel,
+  actionId,
+  saving,
 }: {
   event: SchedulingEvent;
   index: number;
   colors: (typeof Colors)['light'];
   cardBackground: string;
   borderColor: string;
+  showCancel?: boolean;
+  onCancel?: (event: SchedulingEvent) => void;
+  actionId?: string | null;
+  saving?: boolean;
 }) {
+  const isBusy = saving && actionId === event.id;
   return (
     <View style={[styles.eventCard, { backgroundColor: cardBackground, borderColor }]}>
       <View style={styles.cardIdRow}>
@@ -87,6 +97,23 @@ function EventCard({
       ) : (
         <ThemedText style={styles.noMeetLink}>No meet link</ThemedText>
       )}
+      {showCancel && onCancel ? (
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.cancelButton, { borderColor: '#dc2626' }]}
+            onPress={() => onCancel(event)}
+            disabled={isBusy}>
+            {isBusy ? (
+              <ActivityIndicator size="small" color="#dc2626" />
+            ) : (
+              <>
+                <MaterialIcons name="event-busy" size={18} color="#dc2626" />
+                <ThemedText style={[styles.actionButtonText, { color: '#dc2626' }]}>Cancel</ThemedText>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -105,6 +132,10 @@ function EventSection({
   loading,
   onPrevious,
   onNext,
+  showCancel,
+  onCancel,
+  actionId,
+  saving,
 }: {
   title: string;
   icon: keyof typeof MaterialIcons.glyphMap;
@@ -119,6 +150,10 @@ function EventSection({
   loading: boolean;
   onPrevious: () => void;
   onNext: () => void;
+  showCancel?: boolean;
+  onCancel?: (event: SchedulingEvent) => void;
+  actionId?: string | null;
+  saving?: boolean;
 }) {
   const totalPages = Math.max(1, Math.ceil(totalCount / limit));
 
@@ -140,12 +175,16 @@ function EventSection({
       ) : (
         events.map((event, index) => (
           <EventCard
-            key={`${event.email}-${event.startTime}-${index}`}
+            key={event.id}
             event={event}
             index={(page - 1) * limit + index + 1}
             colors={colors}
             cardBackground={cardBackground}
             borderColor={borderColor}
+            showCancel={showCancel}
+            onCancel={onCancel}
+            actionId={actionId}
+            saving={saving}
           />
         ))
       )}
@@ -218,6 +257,8 @@ export default function CalendarMetricsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [upcomingPage, setUpcomingPage] = useState(1);
   const [completedPage, setCompletedPage] = useState(1);
+  const [actionId, setActionId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const loadMetrics = useCallback(
     async (
@@ -261,6 +302,49 @@ export default function CalendarMetricsScreen() {
   useEffect(() => {
     loadMetrics({ upcomingPage: 1, completedPage: 1 });
   }, [loadMetrics]);
+
+  const handleCancel = useCallback(
+    (event: SchedulingEvent) => {
+      Alert.alert(
+        'Cancel meeting',
+        `Cancel the session with ${event.name}? This removes the Google Calendar event and notifies the client.`,
+        [
+          { text: 'Keep meeting', style: 'cancel' },
+          {
+            text: 'Cancel meeting',
+            style: 'destructive',
+            onPress: async () => {
+              setSaving(true);
+              setActionId(event.id);
+              try {
+                await cancelSchedulingMeeting(event.id, 'rise');
+                setMetrics((prev) => {
+                  if (!prev) return prev;
+                  return {
+                    ...prev,
+                    upcomingEvents: prev.upcomingEvents.filter((item) => item.id !== event.id),
+                    pagination: {
+                      ...prev.pagination,
+                      upcoming: {
+                        ...prev.pagination.upcoming,
+                        totalCount: Math.max(0, prev.pagination.upcoming.totalCount - 1),
+                      },
+                    },
+                  };
+                });
+              } catch (err) {
+                Alert.alert('Cancel failed', err instanceof Error ? err.message : 'Unknown error');
+              } finally {
+                setSaving(false);
+                setActionId(null);
+              }
+            },
+          },
+        ]
+      );
+    },
+    []
+  );
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
@@ -349,6 +433,10 @@ export default function CalendarMetricsScreen() {
                 loading={loading}
                 onPrevious={() => loadMetrics({ upcomingPage: upcomingPage - 1 })}
                 onNext={() => loadMetrics({ upcomingPage: upcomingPage + 1 })}
+                showCancel
+                onCancel={handleCancel}
+                actionId={actionId}
+                saving={saving}
               />
 
               <EventSection
@@ -560,6 +648,27 @@ const styles = StyleSheet.create({
     fontSize: 12,
     opacity: 0.5,
     marginTop: 4,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 8,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  cancelButton: {
+    backgroundColor: 'transparent',
+  },
+  actionButtonText: {
+    fontWeight: '600',
   },
   paginationCard: {
     padding: 14,

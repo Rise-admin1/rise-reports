@@ -340,7 +340,9 @@ export default function ManageMeetingsScreen() {
         <ScrollView
           style={styles.content}
           contentContainerStyle={styles.contentContainer}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.tint} />
+          }
           keyboardShouldPersistTaps="handled">
           <ThemedText style={styles.subtitle}>
             Upcoming confirmed sessions. Reschedule updates Google Calendar and notifies attendees.

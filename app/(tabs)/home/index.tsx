@@ -6,8 +6,9 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Image } from 'expo-image';
 import { useRouter, type Href } from 'expo-router';
-import React from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useRefreshControl } from '@/hooks/use-refresh-control';
+import React, { useCallback } from 'react';
+import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
@@ -18,6 +19,7 @@ export default function HomeScreen() {
   const backgroundColor = colors.background;
   const cardBackground = colors.card;
   const borderColor = colors.border;
+  const { refreshing, onRefresh } = useRefreshControl(useCallback(async () => {}, []));
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
@@ -42,7 +44,10 @@ export default function HomeScreen() {
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.tint} />
+        }>
         <View style={styles.reportChoice}>
           <ThemedText type="subtitle" style={styles.reportChoiceTitle}>
             Choose a report

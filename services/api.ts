@@ -1,3 +1,4 @@
+import { clearVaultToken, getVaultToken, setVaultToken } from '@/services/vaultAuth';
 import {
   ExpoFieldFilters,
   ExpoRegistrationsResponse,
@@ -12,6 +13,7 @@ import {
 } from '@/types/reports';
 import {
   AvailabilitySettingInput,
+  GrantSessionCreditsResponse,
   SchedulingAppSource,
   SchedulingAvailabilitySettingResponse,
   SchedulingAvailabilitySettingsResponse,
@@ -21,9 +23,19 @@ import {
   SchedulingMeetingResponse,
   SchedulingMeetingsResponse,
   SchedulingMetricsResponse,
+  SessionCreditsListResponse,
+  SessionCreditsResponse,
 } from '@/types/scheduling';
 import { Task, TaskAsset, TaskAssignee, TaskStatus } from '@/types/tasks';
-import { FetchVaultDocumentsResponse, VaultDocument } from '@/types/vault';
+import {
+  CreateVaultGuestAccessResponse,
+  FetchVaultDocumentsResponse,
+  FetchVaultGuestAccessResponse,
+  VaultDocument,
+  VaultLoginResponse,
+  VaultMeResponse,
+  VaultSession,
+} from '@/types/vault';
 
 const API_BASE_URL = 'https://future.funyula.com/api';
 // const API_BASE_URL = 'http://localhost:3001/api';
@@ -637,6 +649,72 @@ export async function deleteTask(payload: { id: string }): Promise<{ success: bo
   return (await response.json()) as { success: boolean; data: { id: string } };
 }
 
+export class VaultAuthError extends Error {
+  constructor(message = 'Vault session expired. Please sign in again.') {
+    super(message);
+    this.name = 'VaultAuthError';
+  }
+}
+
+async function vaultAuthHeaders(): Promise<Record<string, string>> {
+  const token = await getVaultToken();
+  if (!token) {
+    throw new VaultAuthError('Not signed in to Vault');
+  }
+  return { Authorization: `Bearer ${token}` };
+}
+
+async function parseVaultError(response: Response, fallback: string): Promise<never> {
+  const body = (await response.json().catch(() => null)) as { message?: string } | null;
+  const message = body?.message || fallback;
+  if (response.status === 401) {
+    await clearVaultToken();
+    throw new VaultAuthError(message);
+  }
+  throw new Error(message);
+}
+
+export async function vaultLogin(username: string, password: string): Promise<VaultSession> {
+  const response = await fetch(`${API_BASE_URL}/rise-reports/vault/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: username.trim(), password }),
+  });
+
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { message?: string } | null;
+    throw new Error(body?.message || 'Invalid username or password');
+  }
+
+  const json = (await response.json()) as VaultLoginResponse;
+  await setVaultToken(json.data.token);
+  return json.data;
+}
+
+export async function vaultLogout(): Promise<void> {
+  const headers = await vaultAuthHeaders().catch(() => null);
+  if (headers) {
+    await fetch(`${API_BASE_URL}/rise-reports/vault/auth/logout`, {
+      method: 'POST',
+      headers,
+    }).catch(() => {});
+  }
+  await clearVaultToken();
+}
+
+export async function vaultMe(): Promise<VaultMeResponse['data']> {
+  const response = await fetch(`${API_BASE_URL}/rise-reports/vault/auth/me`, {
+    headers: await vaultAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    await parseVaultError(response, `HTTP error! status: ${response.status}`);
+  }
+
+  const json = (await response.json()) as VaultMeResponse;
+  return json.data;
+}
+
 export async function fetchVaultDocuments(params: {
   page?: number;
   limit?: number;
@@ -645,9 +723,11 @@ export async function fetchVaultDocuments(params: {
   query.set('page', String(params.page ?? 1));
   query.set('limit', String(params.limit ?? 20));
 
-  const response = await fetch(`${API_BASE_URL}/rise-reports/vault/documents?${query.toString()}`);
+  const response = await fetch(`${API_BASE_URL}/rise-reports/vault/documents?${query.toString()}`, {
+    headers: await vaultAuthHeaders(),
+  });
   if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+    await parseVaultError(response, `HTTP error! status: ${response.status}`);
   }
 
   return (await response.json()) as FetchVaultDocumentsResponse;
@@ -656,10 +736,11 @@ export async function fetchVaultDocuments(params: {
 export async function fetchVaultDocumentViewUrl(
   id: string
 ): Promise<{ success: boolean; data: { viewUrl: string; expiresIn: number } }> {
-  const response = await fetch(`${API_BASE_URL}/rise-reports/vault/documents/${encodeURIComponent(id)}/view-url`);
+  const response = await fetch(`${API_BASE_URL}/rise-reports/vault/documents/${encodeURIComponent(id)}/view-url`, {
+    headers: await vaultAuthHeaders(),
+  });
   if (!response.ok) {
-    const errBody = (await response.json().catch(() => null)) as { message?: string } | null;
-    throw new Error(errBody?.message || `HTTP error! status: ${response.status}`);
+    await parseVaultError(response, `HTTP error! status: ${response.status}`);
   }
   return (await response.json()) as { success: boolean; data: { viewUrl: string; expiresIn: number } };
 }
@@ -682,12 +763,12 @@ export async function uploadVaultDocument(payload: {
 
   const response = await fetch(`${API_BASE_URL}/rise-reports/vault/documents`, {
     method: 'POST',
+    headers: await vaultAuthHeaders(),
     body: form,
   });
 
   if (!response.ok) {
-    const errBody = (await response.json().catch(() => null)) as { message?: string } | null;
-    throw new Error(errBody?.message || `HTTP error! status: ${response.status}`);
+    await parseVaultError(response, `HTTP error! status: ${response.status}`);
   }
 
   return (await response.json()) as { success: boolean; data: { document: VaultDocument } };
@@ -698,12 +779,64 @@ export async function deleteVaultDocument(payload: {
 }): Promise<{ success: boolean; data: { id: string } }> {
   const response = await fetch(`${API_BASE_URL}/rise-reports/vault/documents`, {
     method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(await vaultAuthHeaders()),
+    },
     body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+    await parseVaultError(response, `HTTP error! status: ${response.status}`);
+  }
+
+  return (await response.json()) as { success: boolean; data: { id: string } };
+}
+
+export async function createVaultGuestAccess(payload: {
+  username: string;
+  password: string;
+  documentIds: string[];
+}): Promise<CreateVaultGuestAccessResponse> {
+  const response = await fetch(`${API_BASE_URL}/rise-reports/vault/guest-access`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(await vaultAuthHeaders()),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    await parseVaultError(response, `HTTP error! status: ${response.status}`);
+  }
+
+  return (await response.json()) as CreateVaultGuestAccessResponse;
+}
+
+export async function fetchVaultGuestAccess(): Promise<FetchVaultGuestAccessResponse> {
+  const response = await fetch(`${API_BASE_URL}/rise-reports/vault/guest-access`, {
+    headers: await vaultAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    await parseVaultError(response, `HTTP error! status: ${response.status}`);
+  }
+
+  return (await response.json()) as FetchVaultGuestAccessResponse;
+}
+
+export async function revokeVaultGuestAccess(id: string): Promise<{ success: boolean; data: { id: string } }> {
+  const response = await fetch(
+    `${API_BASE_URL}/rise-reports/vault/guest-access/${encodeURIComponent(id)}`,
+    {
+      method: 'DELETE',
+      headers: await vaultAuthHeaders(),
+    }
+  );
+
+  if (!response.ok) {
+    await parseVaultError(response, `HTTP error! status: ${response.status}`);
   }
 
   return (await response.json()) as { success: boolean; data: { id: string } };
@@ -763,6 +896,25 @@ export async function fetchSchedulingBookingStats(
   } catch (error) {
     throw new Error(
       `Failed to fetch booking stats: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+export async function fetchSessionCreditsList(
+  appSource: SchedulingAppSource
+): Promise<SessionCreditsListResponse> {
+  try {
+    const query = new URLSearchParams({ appSource });
+    const response = await fetch(
+      `${SCHEDULING_API_BASE_URL}/scheduling/session-credits/list?${query.toString()}`
+    );
+    if (!response.ok) {
+      await parseSchedulingError(response, `HTTP error! status: ${response.status}`);
+    }
+    return (await response.json()) as SessionCreditsListResponse;
+  } catch (error) {
+    throw new Error(
+      `Failed to fetch session credits list: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
   }
 }
@@ -850,6 +1002,54 @@ export async function deleteAvailabilitySetting(id: string): Promise<{ success: 
   } catch (error) {
     throw new Error(
       `Failed to delete availability: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+export async function grantSessionCredits(payload: {
+  email: string;
+  sessions: number;
+  appSource: SchedulingAppSource;
+  notes?: string;
+  sendEmail?: boolean;
+}): Promise<GrantSessionCreditsResponse> {
+  try {
+    const response = await fetch(`${SCHEDULING_API_BASE_URL}/scheduling/session-credits/grant`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      await parseSchedulingError(response, `HTTP error! status: ${response.status}`);
+    }
+    return (await response.json()) as GrantSessionCreditsResponse;
+  } catch (error) {
+    throw new Error(
+      `Failed to grant session credits: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+export async function fetchSessionCredits(
+  email: string,
+  appSource: SchedulingAppSource
+): Promise<SessionCreditsResponse> {
+  try {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      throw new Error('Email is required');
+    }
+    const query = new URLSearchParams({ email: trimmedEmail, appSource });
+    const response = await fetch(
+      `${SCHEDULING_API_BASE_URL}/scheduling/session-credits?${query.toString()}`
+    );
+    if (!response.ok) {
+      await parseSchedulingError(response, `HTTP error! status: ${response.status}`);
+    }
+    return (await response.json()) as SessionCreditsResponse;
+  } catch (error) {
+    throw new Error(
+      `Failed to fetch session credits: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
   }
 }

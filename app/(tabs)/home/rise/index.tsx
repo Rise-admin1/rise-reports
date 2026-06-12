@@ -13,11 +13,13 @@ import { RiseReportItem, RiseReportsResponse } from '@/types/reports';
 import { buildRiseReportPdfHtml, exportHtmlToPdf } from '@/utils/reportPdf';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter, type Href } from 'expo-router';
-import React, { useState } from 'react';
+import { useRefreshControl } from '@/hooks/use-refresh-control';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Linking,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -40,7 +42,7 @@ export default function RiseScreen() {
   const cardBackground = colors.card;
   const borderColor = colors.border;
 
-  const loadRiseReport = async (type: 'profile-reports' | 'rise-investors', nextPage: number = 1) => {
+  const loadRiseReport = useCallback(async (type: 'profile-reports' | 'rise-investors', nextPage: number = 1) => {
     if (nextPage < 1) return;
     setRiseLoading(true);
     setRiseError(null);
@@ -55,7 +57,15 @@ export default function RiseScreen() {
     } finally {
       setRiseLoading(false);
     }
-  };
+  }, [riseLimit]);
+
+  const { refreshing, onRefresh } = useRefreshControl(
+    useCallback(async () => {
+      if (riseReportType) {
+        await loadRiseReport(riseReportType, riseData?.pagination.page ?? 1);
+      }
+    }, [riseReportType, riseData?.pagination.page, loadRiseReport])
+  );
 
   const handleRiseReportTypeSelect = (type: 'profile-reports' | 'rise-investors') => {
     setRiseReportType(type);
@@ -113,7 +123,10 @@ export default function RiseScreen() {
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.tint} />
+        }>
         <>
 {riseReportType === null ? (
               <>
@@ -224,6 +237,22 @@ export default function RiseScreen() {
                     </ThemedText>
                     <ThemedText style={styles.riseReportCardDesc}>
                       Create paid or free shareable booking links
+                    </ThemedText>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={24} color={colors.icon} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.riseReportCard, { backgroundColor: cardBackground, borderColor }]}
+                  onPress={() => router.push('/home/rise/grant-sessions' as Href)}
+                  activeOpacity={0.85}
+                  accessibilityLabel="Open Grant Sessions">
+                  <View style={styles.riseReportCardContent}>
+                    <MaterialIcons name="card-giftcard" size={32} color={colors.tint} />
+                    <ThemedText type="subtitle" style={styles.riseReportCardTitle}>
+                      Grant Session Package
+                    </ThemedText>
+                    <ThemedText style={styles.riseReportCardDesc}>
+                      Add sessions for external payments and email a booking link
                     </ThemedText>
                   </View>
                   <MaterialIcons name="chevron-right" size={24} color={colors.icon} />

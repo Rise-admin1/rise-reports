@@ -2,7 +2,7 @@
   "expo": {
     "name": "RISE Reports",
     "slug": "rise-reports",
-    "version": "1.1.4",
+    "version": "1.1.7",
     "orientation": "portrait",
     "icon": "./assets/images/1-7ffa7b50.png",
     "scheme": "rise-reports",
@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.rise.reports",
-      "buildNumber": "20",
+      "buildNumber": "24",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -54,7 +54,8 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,

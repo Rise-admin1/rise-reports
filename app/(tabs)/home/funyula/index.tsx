@@ -37,10 +37,12 @@ import {
 import { formatVolunteerGender, formatVolunteerRole } from '@/utils/volunteerDisplay';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useRefreshControl } from '@/hooks/use-refresh-control';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -400,6 +402,34 @@ export default function FunyulaScreen() {
     volunteerFieldFilters,
   ]);
 
+  const { refreshing, onRefresh } = useRefreshControl(
+    useCallback(async () => {
+      switch (funyulaReportType) {
+        case 'contributions':
+          if (reportsData) {
+            await loadFunyulaReports({ nextPage: reportsData.data.pagination.currentPage });
+          }
+          break;
+        case 'volunteer':
+          await loadVolunteersPage(volunteersPage);
+          break;
+        case 'samia-women':
+          await loadExpoPage(expoPage);
+          break;
+        case 'manifesto-users':
+          await loadManifestoUsers();
+          break;
+        default:
+          break;
+      }
+    }, [
+      funyulaReportType,
+      reportsData,
+      volunteersPage,
+      expoPage,
+    ])
+  );
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
       <ThemedView style={[styles.header, { borderBottomColor: borderColor }]}>
@@ -430,7 +460,10 @@ export default function FunyulaScreen() {
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.tint} />
+        }>
         {loading && funyulaReportType === 'contributions' && (
           <View style={styles.centerContainer}>
             <ActivityIndicator size="large" color={colors.tint} />

@@ -15,8 +15,9 @@ import {
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Task, TaskAssignee, TaskAsset, TaskStatus } from '@/types/tasks';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { useRefreshControl } from '@/hooks/use-refresh-control';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Draft = {
@@ -125,13 +126,15 @@ export default function TaskScreen() {
     }
   };
 
-  const reloadForCurrentFilters = async () => {
+  const reloadForCurrentFilters = useCallback(async () => {
     if (hasActiveFilter) {
       await loadFilteredAllMatches();
       return;
     }
     await loadInitialUnfiltered();
-  };
+  }, [hasActiveFilter, selectedAsset, selectedAssignee, selectedStatus]);
+
+  const { refreshing, onRefresh } = useRefreshControl(reloadForCurrentFilters);
 
   useEffect(() => {
     if (hasActiveFilter) {
@@ -321,6 +324,9 @@ export default function TaskScreen() {
         keyExtractor={(t) => t.id}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.tint} />
+        }
         ListEmptyComponent={
           isLoading ? (
             <View />

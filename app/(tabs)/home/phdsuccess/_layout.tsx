@@ -9,6 +9,7 @@ export default function PhdSuccessLayout() {
       <Stack.Screen name="booking-stats" options={{ title: 'Booking Stats' }} />
       <Stack.Screen name="availability-settings" options={{ title: 'Availability Settings' }} />
       <Stack.Screen name="set-appointment" options={{ title: 'Set Appointment' }} />
+      <Stack.Screen name="grant-sessions" options={{ title: 'Grant Sessions' }} />
       <Stack.Screen name="manage-meetings" options={{ title: 'Manage Meetings' }} />
     </Stack>
   );

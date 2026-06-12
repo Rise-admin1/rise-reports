@@ -1,6 +1,7 @@
 export type SchedulingAppSource = 'phd-success' | 'rise';
 
 export interface SchedulingEvent {
+  id: string;
   name: string;
   email: string;
   startTime: string;
@@ -33,6 +34,9 @@ export interface SchedulingBookingStatsResponse {
   completedHours: number;
   upcomingBookings: number;
   upcomingHours: number;
+  packageSessionsTotal: number;
+  packageSessionsUsed: number;
+  packageSessionsLeft: number;
   firstBookingAt: string | null;
   lastBookingAt: string | null;
   lastCompletedMeeting: {
@@ -63,7 +67,7 @@ export type AvailabilitySettingInput = {
   endTime: string;
 };
 
-export type SchedulingInviteType = 'paid' | 'free';
+export type SchedulingInviteType = 'paid' | 'free' | 'package';
 
 export interface SchedulingInvite {
   id: string;
@@ -74,10 +78,60 @@ export interface SchedulingInvite {
   createdAt: string;
   shareUrl: string;
   status: 'active' | 'used' | 'expired' | 'not_found';
+  remainingSessions?: number;
+}
+
+export interface SchedulingSessionCredit {
+  id: string;
+  email: string;
+  appSource: SchedulingAppSource;
+  totalSessions: number;
+  usedSessions: number;
+  remainingSessions: number;
+  notes: string | null;
+  inviteId: string | null;
+  shareUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GrantSessionCreditsResponse {
+  credit: SchedulingSessionCredit;
+  invite: SchedulingInvite;
+  emailSent: boolean;
+  emailSkipped: boolean;
+}
+
+export interface SessionCreditListItem {
+  email: string;
+  totalSessions: number;
+  usedSessions: number;
+  remainingSessions: number;
+}
+
+export interface SessionCreditsListResponse {
+  credits: SessionCreditListItem[];
+}
+
+export interface SessionCreditsResponse {
+  credit: SchedulingSessionCredit;
+  invite: SchedulingInvite | null;
+  recentUsages: Array<{
+    id: string;
+    bookingId: string;
+    createdAt: string;
+    booking: {
+      id: string;
+      startTime: string;
+      endTime: string;
+      status: string;
+    } | null;
+  }>;
 }
 
 export interface SchedulingInviteResponse {
   invite: SchedulingInvite;
+  usedPackageCredit?: boolean;
 }
 
 export interface SchedulingMeeting {

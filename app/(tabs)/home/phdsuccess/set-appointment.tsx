@@ -8,12 +8,14 @@ import type { SchedulingInvite, SchedulingInviteType } from '@/types/scheduling'
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { useRefreshControl } from '@/hooks/use-refresh-control';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Linking,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -36,6 +38,29 @@ function formatExpiry(iso: string | null): string {
   }
 }
 
+function inviteTypeLabel(invite: SchedulingInvite): string {
+  if (invite.type === 'package') {
+    return `Package (${invite.remainingSessions ?? 0} remaining)`;
+  }
+  if (invite.type === 'free') return 'Free (100% off)';
+  return 'Paid';
+}
+
+function inviteExpiryLabel(invite: SchedulingInvite): string {
+  if (invite.type === 'free') return formatExpiry(invite.expiresAt);
+  return 'Never';
+}
+
+function inviteWhatsAppMessage(invite: SchedulingInvite, brand: string): string {
+  if (invite.type === 'package') {
+    return `You have a complimentary ${brand} session from your package (${invite.remainingSessions ?? 0} remaining). Book here: ${invite.shareUrl}`;
+  }
+  if (invite.type === 'free') {
+    return `You have a complimentary ${brand} session (100% off). Book here: ${invite.shareUrl}`;
+  }
+  return `Book your ${brand} session here: ${invite.shareUrl}`;
+}
+
 export default function SetAppointmentScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
@@ -51,6 +76,7 @@ export default function SetAppointmentScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const { refreshing, onRefresh } = useRefreshControl(useCallback(async () => {}, []));
 
   const handleCreate = async () => {
     const trimmed = email.trim();
@@ -82,10 +108,7 @@ export default function SetAppointmentScreen() {
 
   const handleWhatsApp = async () => {
     if (!invite?.shareUrl) return;
-    const message =
-      invite.type === 'free'
-        ? `You have a complimentary PhD Success AE session (100% off). Book here: ${invite.shareUrl}`
-        : `Book your PhD Success AE session here: ${invite.shareUrl}`;
+    const message = inviteWhatsAppMessage(invite, 'PhD Success AE');
     const url = `whatsapp://send?text=${encodeURIComponent(message)}`;
     const canOpen = await Linking.canOpenURL(url);
     if (canOpen) {
@@ -128,7 +151,10 @@ export default function SetAppointmentScreen() {
           style={styles.content}
           contentContainerStyle={styles.contentContainer}
           keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}>
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.tint} />
+          }>
           <View style={[styles.formCard, { backgroundColor: cardBackground, borderColor }]}>
             <ThemedText type="subtitle" style={styles.formTitle}>
               Create booking link
@@ -191,7 +217,7 @@ export default function SetAppointmentScreen() {
 
             <ThemedText style={styles.typeHint}>
               {inviteType === 'free'
-                ? 'Free links expire in 10 minutes, are one-time use, and apply a 100% Stripe coupon at checkout.'
+                ? 'If this client has package sessions remaining, their package link is used and one session is consumed when they book. Otherwise the link expires in 10 minutes, is one-time use, and applies a 100% Stripe coupon at checkout.'
                 : 'Paid links do not expire. Client pays full price at Stripe checkout.'}
             </ThemedText>
 
@@ -229,13 +255,11 @@ export default function SetAppointmentScreen() {
               </View>
               <View style={styles.metaRow}>
                 <ThemedText style={styles.metaLabel}>Type</ThemedText>
-                <ThemedText type="defaultSemiBold">{invite.type === 'free' ? 'Free (100% off)' : 'Paid'}</ThemedText>
+                <ThemedText type="defaultSemiBold">{inviteTypeLabel(invite)}</ThemedText>
               </View>
               <View style={styles.metaRow}>
                 <ThemedText style={styles.metaLabel}>Expires</ThemedText>
-                <ThemedText type="defaultSemiBold">
-                  {invite.type === 'free' ? formatExpiry(invite.expiresAt) : 'Never'}
-                </ThemedText>
+                <ThemedText type="defaultSemiBold">{inviteExpiryLabel(invite)}</ThemedText>
               </View>
 
               <View style={[styles.urlBox, { borderColor, backgroundColor: colors.background }]}>

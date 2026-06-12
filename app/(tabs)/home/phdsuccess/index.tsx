@@ -6,8 +6,9 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Image } from 'expo-image';
 import { useRouter, type Href } from 'expo-router';
-import React from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useRefreshControl } from '@/hooks/use-refresh-control';
+import React, { useCallback } from 'react';
+import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function PhdSuccessScreen() {
@@ -18,6 +19,7 @@ export default function PhdSuccessScreen() {
   const backgroundColor = colors.background;
   const cardBackground = colors.card;
   const borderColor = colors.border;
+  const { refreshing, onRefresh } = useRefreshControl(useCallback(async () => {}, []));
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
@@ -48,7 +50,10 @@ export default function PhdSuccessScreen() {
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.tint} />
+        }>
         <View style={styles.brandRow}>
           <View style={[styles.logoContainer, { backgroundColor: cardBackground, borderColor }]}>
             <Image
@@ -122,6 +127,22 @@ export default function PhdSuccessScreen() {
               </ThemedText>
               <ThemedText style={styles.reportCardDesc}>
                 Create paid or free shareable booking links
+              </ThemedText>
+            </View>
+            <MaterialIcons name="chevron-right" size={24} color={colors.icon} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.reportCard, { backgroundColor: cardBackground, borderColor }]}
+            onPress={() => router.push('/home/phdsuccess/grant-sessions' as Href)}
+            activeOpacity={0.85}
+            accessibilityLabel="Open Grant Sessions">
+            <View style={styles.reportCardContent}>
+              <MaterialIcons name="card-giftcard" size={32} color={colors.tint} />
+              <ThemedText type="subtitle" style={styles.reportCardTitle}>
+                Grant Session Package
+              </ThemedText>
+              <ThemedText style={styles.reportCardDesc}>
+                Add sessions for external payments and email a booking link
               </ThemedText>
             </View>
             <MaterialIcons name="chevron-right" size={24} color={colors.icon} />
