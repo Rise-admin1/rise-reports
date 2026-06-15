@@ -18,6 +18,7 @@ import {
   vaultLogout as apiVaultLogout,
   vaultMe as apiVaultMe,
 } from '@/services/api';
+import { clearVaultToken } from '@/services/vaultAuth';
 import { VaultDocument, VaultGuestAccess, VaultRole } from '@/types/vault';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import * as Clipboard from 'expo-clipboard';
@@ -185,6 +186,7 @@ type VaultUser = {
   username: string;
   role: VaultRole;
   expiresAt: string | null;
+  sessionExpiresAt: string | null;
 };
 
 export default function VaultScreen() {
@@ -225,20 +227,33 @@ export default function VaultScreen() {
   const isAdmin = vaultUser?.role === 'ADMIN';
   const isGuest = vaultUser?.role === 'GUEST';
 
-  const handleAuthFailure = useCallback(() => {
+  const handleAuthFailure = useCallback((message?: string) => {
     setVaultUser(null);
     setDocuments([]);
     setTotalCount(0);
     setGuestAccess([]);
     setListSelectedDocIds([]);
+    if (message) {
+      setLoginError(message);
+    }
   }, []);
+
+  const handleSessionExpired = useCallback(() => {
+    clearVaultToken();
+    handleAuthFailure('Your session expired after 1 hour. Please sign in again.');
+  }, [handleAuthFailure]);
 
   const restoreSession = useCallback(async () => {
     setAuthLoading(true);
     setLoginError(null);
     try {
       const me = await apiVaultMe();
-      setVaultUser({ username: me.username, role: me.role, expiresAt: me.expiresAt });
+      setVaultUser({
+        username: me.username,
+        role: me.role,
+        expiresAt: me.expiresAt,
+        sessionExpiresAt: me.sessionExpiresAt,
+      });
     } catch (e) {
       if (!(e instanceof VaultAuthError)) {
         setLoginError(e instanceof Error ? e.message : 'Failed to restore session');
@@ -294,6 +309,19 @@ export default function VaultScreen() {
   useEffect(() => {
     restoreSession();
   }, [restoreSession]);
+
+  useEffect(() => {
+    if (!vaultUser?.sessionExpiresAt) return undefined;
+
+    const remaining = new Date(vaultUser.sessionExpiresAt).getTime() - Date.now();
+    if (remaining <= 0) {
+      handleSessionExpired();
+      return undefined;
+    }
+
+    const timer = setTimeout(handleSessionExpired, remaining);
+    return () => clearTimeout(timer);
+  }, [vaultUser?.sessionExpiresAt, handleSessionExpired]);
 
   useEffect(() => {
     if (vaultUser) {
@@ -371,6 +399,7 @@ export default function VaultScreen() {
         username: session.username,
         role: session.role,
         expiresAt: session.expiresAt,
+        sessionExpiresAt: session.sessionExpiresAt,
       });
       setLoginPassword('');
     } catch (e) {

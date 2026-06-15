@@ -33,6 +33,7 @@ export type VaultSession = {
   username: string;
   role: VaultRole;
   expiresAt: string | null;
+  sessionExpiresAt: string;
   documentIds: string[];
 };
 
@@ -47,6 +48,7 @@ export type VaultMeResponse = {
     username: string;
     role: VaultRole;
     expiresAt: string | null;
+    sessionExpiresAt: string;
     documentIds: string[];
   };
 };
