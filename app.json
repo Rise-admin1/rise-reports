@@ -2,7 +2,7 @@
   "expo": {
     "name": "RISE Reports",
     "slug": "rise-reports",
-    "version": "1.1.7",
+    "version": "1.1.8",
     "orientation": "portrait",
     "icon": "./assets/images/1-7ffa7b50.png",
     "scheme": "rise-reports",
@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.rise.reports",
-      "buildNumber": "24",
+      "buildNumber": "25",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }

@@ -5,6 +5,7 @@ import { useThemePreference } from '@/context/theme-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useRefreshControl } from '@/hooks/use-refresh-control';
 import {
+  addVaultGuestDocuments as apiAddVaultGuestDocuments,
   createVaultGuestAccess as apiCreateVaultGuestAccess,
   deleteVaultDocument as apiDeleteVaultDocument,
   fetchVaultDocumentViewUrl as apiFetchVaultDocumentViewUrl,
@@ -216,6 +217,9 @@ export default function VaultScreen() {
   const [isSharing, setIsSharing] = useState(false);
   const [shareResult, setShareResult] = useState<ShareResult | null>(null);
   const [credentialsCopied, setCredentialsCopied] = useState(false);
+  const [addDocsGuest, setAddDocsGuest] = useState<VaultGuestAccess | null>(null);
+  const [addDocsSelectedIds, setAddDocsSelectedIds] = useState<string[]>([]);
+  const [isAddingDocs, setIsAddingDocs] = useState(false);
   const requestIdRef = useRef(0);
 
   const isAdmin = vaultUser?.role === 'ADMIN';
@@ -303,6 +307,16 @@ export default function VaultScreen() {
 
   const isDocShared = (docId: string) => !!guestForDocument(docId);
 
+  const guestAssignedDocIds = (guest: VaultGuestAccess) =>
+    new Set(guest.documents?.map((doc) => doc.id) ?? []);
+
+  const addableDocsForGuest = (guest: VaultGuestAccess) =>
+    documents.filter((doc) => {
+      const sharedGuest = guestForDocument(doc.id);
+      if (!sharedGuest) return true;
+      return sharedGuest.id === guest.id;
+    }).filter((doc) => !guestAssignedDocIds(guest).has(doc.id));
+
   const toggleListDocSelection = (docId: string) => {
     setListSelectedDocIds((prev) =>
       prev.includes(docId) ? prev.filter((id) => id !== docId) : [...prev, docId]
@@ -322,6 +336,24 @@ export default function VaultScreen() {
     setShareSelectedDocIds([]);
     setShareUsername('');
     setSharePassword('');
+  };
+
+  const closeAddDocsModal = () => {
+    setAddDocsGuest(null);
+    setAddDocsSelectedIds([]);
+    setIsAddingDocs(false);
+  };
+
+  const openAddDocsModal = (guest: VaultGuestAccess) => {
+    setAddDocsGuest(guest);
+    setAddDocsSelectedIds([]);
+    setApiError(null);
+  };
+
+  const toggleAddDocsSelection = (docId: string) => {
+    setAddDocsSelectedIds((prev) =>
+      prev.includes(docId) ? prev.filter((id) => id !== docId) : [...prev, docId]
+    );
   };
 
   const handleLogin = async () => {
@@ -439,6 +471,30 @@ export default function VaultScreen() {
         },
       },
     ]);
+  };
+
+  const handleConfirmAddDocs = async () => {
+    if (!addDocsGuest || addDocsSelectedIds.length === 0) return;
+
+    setIsAddingDocs(true);
+    setApiError(null);
+
+    try {
+      const resp = await apiAddVaultGuestDocuments(addDocsGuest.id, addDocsSelectedIds);
+      setGuestAccess((prev) =>
+        prev.map((guest) => (guest.id === addDocsGuest.id ? resp.data : guest))
+      );
+      closeAddDocsModal();
+    } catch (e) {
+      if (e instanceof VaultAuthError) {
+        handleAuthFailure();
+        setLoginError(e.message);
+        return;
+      }
+      setApiError(e instanceof Error ? e.message : 'Failed to add documents to guest access');
+    } finally {
+      setIsAddingDocs(false);
+    }
   };
 
   const handleConfirmShare = async () => {
@@ -794,6 +850,24 @@ export default function VaultScreen() {
                             : `Expires ${formatExpiryDate(guest.expiresAt)}`}
                         </ThemedText>
                       </View>
+                      <Pressable
+                        onPress={() => openAddDocsModal(guest)}
+                        disabled={addableDocsForGuest(guest).length === 0}
+                        style={[
+                          styles.actionIcon,
+                          addableDocsForGuest(guest).length === 0 && styles.actionDisabled,
+                        ]}
+                        accessibilityLabel="Add documents">
+                        <MaterialIcons
+                          name="playlist-add"
+                          size={20}
+                          color={
+                            addableDocsForGuest(guest).length === 0
+                              ? colors.tabIconDefault
+                              : colors.icon
+                          }
+                        />
+                      </Pressable>
                       <Pressable onPress={() => handleRevokeGuest(guest)} style={styles.actionIcon}>
                         <MaterialIcons name="delete-outline" size={20} color={colors.errorText} />
                       </Pressable>
@@ -980,6 +1054,87 @@ export default function VaultScreen() {
           </View>
         </Modal>
 
+        <Modal
+          visible={!!addDocsGuest}
+          animationType="slide"
+          transparent
+          onRequestClose={closeAddDocsModal}>
+          <KeyboardAvoidingView
+            style={styles.modalOverlay}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <Pressable style={styles.modalBackdrop} onPress={closeAddDocsModal} />
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={styles.modalScrollContent}>
+              <View style={[styles.modalSheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <ThemedText type="subtitle">Add documents to guest</ThemedText>
+                {addDocsGuest ? (
+                  <>
+                    <ThemedText style={styles.modalFileHint}>
+                      Select documents to assign to {addDocsGuest.username}. Existing assignments are
+                      unchanged.
+                    </ThemedText>
+                    {addableDocsForGuest(addDocsGuest).length === 0 ? (
+                      <ThemedText style={styles.modalFileHint}>
+                        No additional documents are available to assign.
+                      </ThemedText>
+                    ) : (
+                      <View style={styles.addDocsList}>
+                        {addableDocsForGuest(addDocsGuest).map((doc) => {
+                          const selected = addDocsSelectedIds.includes(doc.id);
+                          return (
+                            <Pressable
+                              key={doc.id}
+                              onPress={() => !isAddingDocs && toggleAddDocsSelection(doc.id)}
+                              disabled={isAddingDocs}
+                              style={[
+                                styles.addDocsRow,
+                                { backgroundColor: colors.background, borderColor: colors.border },
+                              ]}>
+                              <MaterialIcons name={mimeIcon(doc.mimeType)} size={22} color={colors.tint} />
+                              <View style={styles.addDocsRowText}>
+                                <ThemedText type="defaultSemiBold" numberOfLines={1}>
+                                  {displayName(doc)}
+                                </ThemedText>
+                                <ThemedText style={styles.meta}>{formatBytes(doc.sizeBytes)}</ThemedText>
+                              </View>
+                              <MaterialIcons
+                                name={selected ? 'check-box' : 'check-box-outline-blank'}
+                                size={22}
+                                color={selected ? colors.tint : colors.tabIconDefault}
+                              />
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    )}
+                  </>
+                ) : null}
+                <View style={styles.modalActions}>
+                  <Pressable
+                    onPress={closeAddDocsModal}
+                    disabled={isAddingDocs}
+                    style={[styles.modalBtn, { borderColor: colors.border, backgroundColor: colors.buttonSecondary }]}>
+                    <ThemedText>Cancel</ThemedText>
+                  </Pressable>
+                  <Pressable
+                    onPress={handleConfirmAddDocs}
+                    disabled={isAddingDocs || addDocsSelectedIds.length === 0}
+                    style={[styles.modalBtn, { backgroundColor: colors.tint, opacity: isAddingDocs ? 0.7 : 1 }]}>
+                    {isAddingDocs ? (
+                      <ActivityIndicator color={colors.tintText} />
+                    ) : (
+                      <ThemedText style={{ color: colors.tintText, fontWeight: '600' }}>
+                        Add documents
+                      </ThemedText>
+                    )}
+                  </Pressable>
+                </View>
+              </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </Modal>
+
         {isAdmin ? (
           <Pressable
             onPress={handlePickFile}
@@ -1117,6 +1272,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   guestRowText: { flex: 1, gap: 4 },
+  addDocsList: { gap: 8 },
+  addDocsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  addDocsRowText: { flex: 1, gap: 2, minWidth: 0 },
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
   modalScrollContent: { flexGrow: 1, justifyContent: 'flex-end' },
   modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },

@@ -826,6 +826,29 @@ export async function fetchVaultGuestAccess(): Promise<FetchVaultGuestAccessResp
   return (await response.json()) as FetchVaultGuestAccessResponse;
 }
 
+export async function addVaultGuestDocuments(
+  guestId: string,
+  documentIds: string[]
+): Promise<CreateVaultGuestAccessResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/rise-reports/vault/guest-access/${encodeURIComponent(guestId)}/documents`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(await vaultAuthHeaders()),
+      },
+      body: JSON.stringify({ documentIds }),
+    }
+  );
+
+  if (!response.ok) {
+    await parseVaultError(response, `HTTP error! status: ${response.status}`);
+  }
+
+  return (await response.json()) as CreateVaultGuestAccessResponse;
+}
+
 export async function revokeVaultGuestAccess(id: string): Promise<{ success: boolean; data: { id: string } }> {
   const response = await fetch(
     `${API_BASE_URL}/rise-reports/vault/guest-access/${encodeURIComponent(id)}`,
