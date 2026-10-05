@@ -1,0 +1,127 @@
+export const REPORT_PERMISSIONS = [
+  // Funyula
+  'FUNYULA_PAYMENTS',
+  'FUNYULA_VOLUNTEERS',
+  'FUNYULA_SAMIA_WOMEN',
+  'FUNYULA_MANIFESTO',
+  // RISE / PhD
+  'RISE_PROFILES',
+  'RISE_INVESTORS',
+  'RISE_SCHEDULING',
+  'PHD_SCHEDULING',
+  // Coach Academ
+  'COACH_ACADEM_STATS',
+  'COACH_ACADEM_TEACHERS',
+  'COACH_ACADEM_PARENTS',
+  'COACH_ACADEM_ORGANIZATIONS',
+  'COACH_ACADEM_PURCHASES',
+  'COACH_ACADEM_PENDING_SUBJECTS',
+  'COACH_ACADEM_REPORTS',
+  // Velo
+  'VELO_STATS',
+  'VELO_SENDERS',
+  'VELO_AGENTS',
+  'VELO_SHIPMENTS',
+  'VELO_PURCHASES',
+  'VELO_LISTINGS',
+  'VELO_CONTACT_INQUIRIES',
+  'VELO_APPOINTMENTS',
+  // Safari Books
+  'SAFARI_BOOKS_STATS',
+  'SAFARI_BOOKS_LISTENERS',
+  'SAFARI_BOOKS_PUBLISHERS',
+  'SAFARI_BOOKS_BOOKS',
+  'SAFARI_BOOKS_PENDING',
+  // Scientific Journals Portal
+  'SCIENTIFIC_JOURNALS_STATS',
+  'SCIENTIFIC_JOURNALS_USERS',
+  'SCIENTIFIC_JOURNALS_REVIEWERS',
+  'SCIENTIFIC_JOURNALS_ARTICLES',
+  'SCIENTIFIC_JOURNALS_PAYMENTS',
+  'SCIENTIFIC_JOURNALS_SUBSCRIPTIONS',
+  'SCIENTIFIC_JOURNALS_FULL_ISSUES',
+  // Dubai Analytica
+  'DUBAI_ANALYTICA_STATS',
+  'DUBAI_ANALYTICA_USERS',
+  'DUBAI_ANALYTICA_SURVEYS',
+  'DUBAI_ANALYTICA_PURCHASES',
+  'DUBAI_ANALYTICA_SUBSCRIPTIONS',
+  'DUBAI_ANALYTICA_DRI_PAYMENTS',
+];
+
+/** Old single-asset keys → expand to all new endpoint permissions for existing grants */
+export const LEGACY_PERMISSION_EXPANSIONS = {
+  COACH_ACADEM: [
+    'COACH_ACADEM_STATS',
+    'COACH_ACADEM_TEACHERS',
+    'COACH_ACADEM_PARENTS',
+    'COACH_ACADEM_ORGANIZATIONS',
+    'COACH_ACADEM_PURCHASES',
+    'COACH_ACADEM_PENDING_SUBJECTS',
+    'COACH_ACADEM_REPORTS',
+  ],
+  VELO: [
+    'VELO_STATS',
+    'VELO_SENDERS',
+    'VELO_AGENTS',
+    'VELO_SHIPMENTS',
+    'VELO_PURCHASES',
+    'VELO_LISTINGS',
+    'VELO_CONTACT_INQUIRIES',
+    'VELO_APPOINTMENTS',
+  ],
+  SAFARI_BOOKS: [
+    'SAFARI_BOOKS_STATS',
+    'SAFARI_BOOKS_LISTENERS',
+    'SAFARI_BOOKS_PUBLISHERS',
+    'SAFARI_BOOKS_BOOKS',
+    'SAFARI_BOOKS_PENDING',
+  ],
+  SCIENTIFIC_JOURNALS: [
+    'SCIENTIFIC_JOURNALS_STATS',
+    'SCIENTIFIC_JOURNALS_USERS',
+    'SCIENTIFIC_JOURNALS_REVIEWERS',
+    'SCIENTIFIC_JOURNALS_ARTICLES',
+    'SCIENTIFIC_JOURNALS_PAYMENTS',
+    'SCIENTIFIC_JOURNALS_SUBSCRIPTIONS',
+    'SCIENTIFIC_JOURNALS_FULL_ISSUES',
+  ],
+  DUBAI_ANALYTICA: [
+    'DUBAI_ANALYTICA_STATS',
+    'DUBAI_ANALYTICA_USERS',
+    'DUBAI_ANALYTICA_SURVEYS',
+    'DUBAI_ANALYTICA_PURCHASES',
+    'DUBAI_ANALYTICA_SUBSCRIPTIONS',
+    'DUBAI_ANALYTICA_DRI_PAYMENTS',
+  ],
+};
+
+export const REPORT_PERMISSION_SET = new Set(REPORT_PERMISSIONS);
+
+export const ALL_REPORT_PERMISSIONS = [...REPORT_PERMISSIONS];
+
+export function isValidPermission(permission) {
+  return REPORT_PERMISSION_SET.has(permission);
+}
+
+export function expandPermissions(permissions) {
+  if (!Array.isArray(permissions)) return [];
+  const unique = new Set();
+  for (const value of permissions) {
+    if (typeof value !== 'string') continue;
+    if (LEGACY_PERMISSION_EXPANSIONS[value]) {
+      for (const expanded of LEGACY_PERMISSION_EXPANSIONS[value]) {
+        unique.add(expanded);
+      }
+      continue;
+    }
+    if (isValidPermission(value)) {
+      unique.add(value);
+    }
+  }
+  return [...unique];
+}
+
+export function normalizePermissions(permissions) {
+  return expandPermissions(permissions);
+}

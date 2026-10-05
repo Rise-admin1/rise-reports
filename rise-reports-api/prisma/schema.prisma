@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider          = "mysql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+enum AppRole {
+  SUPER_ADMIN
+  ADMIN
+  USER
+}
+
+model AppUser {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  passwordHash String
+  displayName  String?
+  role         AppRole  @default(USER)
+  createdById  String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  createdBy    AppUser?  @relation("UserCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdUsers AppUser[] @relation("UserCreator")
+
+  permissions   AppUserPermission[]
+  sessions      AppSession[]
+  assignedTasks Task[]              @relation("TaskAssignee")
+  createdTasks  Task[]              @relation("TaskCreator")
+
+  @@index([role])
+  @@index([createdById])
+  @@index([isActive])
+}
+
+model AppUserPermission {
+  id         String   @id @default(uuid())
+  userId     String
+  permission String
+  createdAt  DateTime @default(now())
+
+  user AppUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, permission])
+  @@index([userId])
+  @@index([permission])
+}
+
+model AppSession {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user AppUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Task {
+  id               String   @id @default(uuid())
+  title            String
+  description      String?
+  asset            String
+  assignedToUserId String
+  createdById      String?
+  status           String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  assignedToUser AppUser  @relation("TaskAssignee", fields: [assignedToUserId], references: [id], onDelete: Restrict)
+  createdBy      AppUser? @relation("TaskCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([asset])
+  @@index([assignedToUserId])
+  @@index([status])
+  @@index([createdAt])
+}
