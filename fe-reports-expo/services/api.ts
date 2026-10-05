@@ -91,7 +91,7 @@ import type {
 } from '@/types/velo';
 
 /** BFF base — all non-Vault app traffic goes here */
-const APP_API_BASE_URL = process.env.EXPO_PUBLIC_APP_API_URL || 'http://10.65.1.131:4100/api';
+const APP_API_BASE_URL = process.env.EXPO_PUBLIC_APP_API_URL || 'https://rise-reports.onrender.com/api';
 
 /** Vault stays on mch-mp / Funyula host (not proxied by the BFF) */
 const VAULT_API_BASE_URL = process.env.EXPO_PUBLIC_VAULT_API_URL || 'https://future.funyula.com/api';
