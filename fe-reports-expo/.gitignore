@@ -41,5 +41,5 @@ yarn-error.*
 app-example
 
 # generated native folders
-/ios
+# Keep ios/ out of this list. It is committed, and EAS Build will not upload gitignored files.
 /android

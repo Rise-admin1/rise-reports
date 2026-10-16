@@ -57,24 +57,58 @@ router.get('/subjects/verified', requirePermission('COACH_ACADEM_PENDING_SUBJECT
   proxyCoachAcadem('/subjects', req, res)
 );
 
+router.get(
+  '/subjects/:subjectId',
+  requirePermission('COACH_ACADEM_PENDING_SUBJECTS'),
+  (req, res) =>
+    proxyCoachAcadem(`/subjects/${encodeURIComponent(req.params.subjectId)}`, req, res)
+);
+
 router.get('/teachers', requirePermission('COACH_ACADEM_TEACHERS'), (req, res) =>
   proxyCoachAcadem('/admin/teachers', req, res)
+);
+
+router.get('/teachers/:userId', requirePermission('COACH_ACADEM_TEACHERS'), (req, res) =>
+  proxyCoachAcadem(`/admin/teachers/${encodeURIComponent(req.params.userId)}`, req, res)
 );
 
 router.get('/parents', requirePermission('COACH_ACADEM_PARENTS'), (req, res) =>
   proxyCoachAcadem('/admin/parents', req, res)
 );
 
+router.get('/parents/:userId', requirePermission('COACH_ACADEM_PARENTS'), (req, res) =>
+  proxyCoachAcadem(`/admin/parents/${encodeURIComponent(req.params.userId)}`, req, res)
+);
+
 router.get('/organizations', requirePermission('COACH_ACADEM_ORGANIZATIONS'), (req, res) =>
   proxyCoachAcadem('/admin/organizations', req, res)
+);
+
+router.get(
+  '/organizations/:organizationId',
+  requirePermission('COACH_ACADEM_ORGANIZATIONS'),
+  (req, res) =>
+    proxyCoachAcadem(
+      `/admin/organizations/${encodeURIComponent(req.params.organizationId)}`,
+      req,
+      res
+    )
 );
 
 router.get('/purchases', requirePermission('COACH_ACADEM_PURCHASES'), (req, res) =>
   proxyCoachAcadem('/admin/purchases', req, res)
 );
 
+router.get('/purchases/:purchaseId', requirePermission('COACH_ACADEM_PURCHASES'), (req, res) =>
+  proxyCoachAcadem(`/admin/purchases/${encodeURIComponent(req.params.purchaseId)}`, req, res)
+);
+
 router.get('/reports', requirePermission('COACH_ACADEM_REPORTS'), (req, res) =>
   proxyCoachAcadem('/reports/', req, res)
+);
+
+router.get('/reports/:reportId', requirePermission('COACH_ACADEM_REPORTS'), (req, res) =>
+  proxyCoachAcadem(`/admin/reports/${encodeURIComponent(req.params.reportId)}`, req, res)
 );
 
 export default router;

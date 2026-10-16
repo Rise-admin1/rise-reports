@@ -11,11 +11,16 @@ import type {
 } from '@/types/appAuth';
 import type {
   CoachAcademAbuseReport,
+  CoachAcademOrganizationDetail,
   CoachAcademOrganizationsResponse,
+  CoachAcademParentDetail,
   CoachAcademParentsResponse,
   CoachAcademPendingSubject,
+  CoachAcademPurchaseDetail,
   CoachAcademPurchasesResponse,
   CoachAcademStatsResponse,
+  CoachAcademSubjectDetail,
+  CoachAcademTeacherDetail,
   CoachAcademTeachersResponse,
 } from '@/types/coachAcadem';
 import type {
@@ -359,6 +364,78 @@ export async function fetchCoachAcademAbuseReports(): Promise<CoachAcademAbuseRe
   }
   const data = await response.json();
   return Array.isArray(data) ? (data as CoachAcademAbuseReport[]) : [];
+}
+
+export async function fetchCoachAcademTeacherDetail(
+  userId: string
+): Promise<CoachAcademTeacherDetail> {
+  const response = await appFetch(
+    `${APP_API_BASE_URL}/coach-academ/teachers/${encodeURIComponent(userId)}`
+  );
+  if (!response.ok) {
+    await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
+  }
+  return (await response.json()) as CoachAcademTeacherDetail;
+}
+
+export async function fetchCoachAcademParentDetail(
+  userId: string
+): Promise<CoachAcademParentDetail> {
+  const response = await appFetch(
+    `${APP_API_BASE_URL}/coach-academ/parents/${encodeURIComponent(userId)}`
+  );
+  if (!response.ok) {
+    await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
+  }
+  return (await response.json()) as CoachAcademParentDetail;
+}
+
+export async function fetchCoachAcademOrganizationDetail(
+  organizationId: string
+): Promise<CoachAcademOrganizationDetail> {
+  const response = await appFetch(
+    `${APP_API_BASE_URL}/coach-academ/organizations/${encodeURIComponent(organizationId)}`
+  );
+  if (!response.ok) {
+    await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
+  }
+  return (await response.json()) as CoachAcademOrganizationDetail;
+}
+
+export async function fetchCoachAcademPurchaseDetail(
+  purchaseId: string
+): Promise<CoachAcademPurchaseDetail> {
+  const response = await appFetch(
+    `${APP_API_BASE_URL}/coach-academ/purchases/${encodeURIComponent(purchaseId)}`
+  );
+  if (!response.ok) {
+    await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
+  }
+  return (await response.json()) as CoachAcademPurchaseDetail;
+}
+
+export async function fetchCoachAcademAbuseReportDetail(
+  reportId: string
+): Promise<CoachAcademAbuseReport> {
+  const response = await appFetch(
+    `${APP_API_BASE_URL}/coach-academ/reports/${encodeURIComponent(reportId)}`
+  );
+  if (!response.ok) {
+    await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
+  }
+  return (await response.json()) as CoachAcademAbuseReport;
+}
+
+export async function fetchCoachAcademSubjectDetail(
+  subjectId: string
+): Promise<CoachAcademSubjectDetail> {
+  const response = await appFetch(
+    `${APP_API_BASE_URL}/coach-academ/subjects/${encodeURIComponent(subjectId)}`
+  );
+  if (!response.ok) {
+    await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
+  }
+  return (await response.json()) as CoachAcademSubjectDetail;
 }
 
 export async function fetchVeloStats(): Promise<VeloStatsResponse> {

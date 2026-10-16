@@ -42,6 +42,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { formatDate, formatMinor } from './format';
 
 type ReportView =
   | 'menu'
@@ -52,23 +53,6 @@ type ReportView =
   | 'purchases'
   | 'pending'
   | 'reports';
-
-function formatMinor(amount: number, currency = 'AED'): string {
-  const major = amount / 100;
-  return `${currency} ${major.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
-
-function formatDate(value?: string | null): string {
-  if (!value) return '—';
-  try {
-    return new Date(value).toLocaleString();
-  } catch {
-    return String(value);
-  }
-}
 
 export default function CoachAcademScreen() {
   const router = useRouter();
@@ -389,77 +373,115 @@ export default function CoachAcademScreen() {
           <View style={styles.list}>
             <ThemedText style={styles.meta}>Total {teachersTotal}</ThemedText>
             {teachers.map((item) => (
-              <View
+              <TouchableOpacity
                 key={item.id}
-                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <ThemedText type="defaultSemiBold">{item.name}</ThemedText>
-                <ThemedText style={styles.meta}>{item.email}</ThemedText>
-                <ThemedText style={styles.meta}>
-                  Joined {formatDate(item.createdAt)}
-                  {item.organizationName ? ` · ${item.organizationName}` : ''}
-                </ThemedText>
-                <ThemedText style={styles.meta}>
-                  Subjects: {item.verifiedSubjects} verified · {item.pendingSubjects} pending ·{' '}
-                  {item.rejectedSubjects} rejected
-                </ThemedText>
-              </View>
+                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                activeOpacity={0.85}
+                onPress={() =>
+                  router.push(`/home/coachacadem/teachers/${encodeURIComponent(item.id)}`)
+                }>
+                <View style={styles.rowCardHeader}>
+                  <View style={{ flex: 1, gap: 4 }}>
+                    <ThemedText type="defaultSemiBold">{item.name}</ThemedText>
+                    <ThemedText style={styles.meta}>{item.email}</ThemedText>
+                    <ThemedText style={styles.meta}>
+                      Joined {formatDate(item.createdAt)}
+                      {item.organizationName ? ` · ${item.organizationName}` : ''}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>
+                      Subjects: {item.verifiedSubjects} verified · {item.pendingSubjects} pending ·{' '}
+                      {item.rejectedSubjects} rejected
+                    </ThemedText>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={22} color={colors.icon} />
+                </View>
+              </TouchableOpacity>
             ))}
           </View>
         ) : view === 'parents' ? (
           <View style={styles.list}>
             <ThemedText style={styles.meta}>Total {parentsTotal}</ThemedText>
             {parents.map((item) => (
-              <View
+              <TouchableOpacity
                 key={item.id}
-                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <ThemedText type="defaultSemiBold">{item.name}</ThemedText>
-                <ThemedText style={styles.meta}>{item.email}</ThemedText>
-                <ThemedText style={styles.meta}>
-                  Joined {formatDate(item.createdAt)} · links {item.acceptedLinks} accepted /{' '}
-                  {item.pendingLinks} pending
-                </ThemedText>
-              </View>
+                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                activeOpacity={0.85}
+                onPress={() =>
+                  router.push(`/home/coachacadem/parents/${encodeURIComponent(item.id)}`)
+                }>
+                <View style={styles.rowCardHeader}>
+                  <View style={{ flex: 1, gap: 4 }}>
+                    <ThemedText type="defaultSemiBold">{item.name}</ThemedText>
+                    <ThemedText style={styles.meta}>{item.email}</ThemedText>
+                    <ThemedText style={styles.meta}>
+                      Joined {formatDate(item.createdAt)} · links {item.acceptedLinks} accepted /{' '}
+                      {item.pendingLinks} pending
+                    </ThemedText>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={22} color={colors.icon} />
+                </View>
+              </TouchableOpacity>
             ))}
           </View>
         ) : view === 'organizations' ? (
           <View style={styles.list}>
             <ThemedText style={styles.meta}>Total {orgsTotal}</ThemedText>
             {organizations.map((item) => (
-              <View
+              <TouchableOpacity
                 key={item.id}
-                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <ThemedText type="defaultSemiBold">{item.orgName}</ThemedText>
-                <ThemedText style={styles.meta}>{item.orgEmail || 'No email'}</ThemedText>
-                <ThemedText style={styles.meta}>
-                  Members {item.memberCount}
-                  {item.orgCapacity != null ? ` / capacity ${item.orgCapacity}` : ''}
-                </ThemedText>
-                <ThemedText style={styles.meta}>
-                  Lead {item.teamLeadName || '—'}
-                  {item.teamLeadEmail ? ` · ${item.teamLeadEmail}` : ''}
-                </ThemedText>
-              </View>
+                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                activeOpacity={0.85}
+                onPress={() =>
+                  router.push(
+                    `/home/coachacadem/organizations/${encodeURIComponent(item.id)}`
+                  )
+                }>
+                <View style={styles.rowCardHeader}>
+                  <View style={{ flex: 1, gap: 4 }}>
+                    <ThemedText type="defaultSemiBold">{item.orgName}</ThemedText>
+                    <ThemedText style={styles.meta}>{item.orgEmail || 'No email'}</ThemedText>
+                    <ThemedText style={styles.meta}>
+                      Members {item.memberCount}
+                      {item.orgCapacity != null ? ` / capacity ${item.orgCapacity}` : ''}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>
+                      Lead {item.teamLeadName || '—'}
+                      {item.teamLeadEmail ? ` · ${item.teamLeadEmail}` : ''}
+                    </ThemedText>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={22} color={colors.icon} />
+                </View>
+              </TouchableOpacity>
             ))}
           </View>
         ) : view === 'purchases' ? (
           <View style={styles.list}>
             <ThemedText style={styles.meta}>Total {purchasesTotal}</ThemedText>
             {purchases.map((item) => (
-              <View
+              <TouchableOpacity
                 key={item.id}
-                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <ThemedText type="defaultSemiBold">{item.subjectName || 'Subject'}</ThemedText>
-                <ThemedText style={styles.meta}>
-                  {item.studentName || 'Student'}
-                  {item.studentEmail ? ` · ${item.studentEmail}` : ''}
-                </ThemedText>
-                <ThemedText style={styles.meta}>
-                  {typeof item.purchaseAmount === 'number'
-                    ? formatMinor(item.purchaseAmount, item.purchaseCurrency || 'AED')
-                    : '—'}{' '}
-                  · {formatDate(item.purchaseDate)}
-                </ThemedText>
-              </View>
+                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                activeOpacity={0.85}
+                onPress={() =>
+                  router.push(`/home/coachacadem/purchases/${encodeURIComponent(item.id)}`)
+                }>
+                <View style={styles.rowCardHeader}>
+                  <View style={{ flex: 1, gap: 4 }}>
+                    <ThemedText type="defaultSemiBold">{item.subjectName || 'Subject'}</ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {item.studentName || 'Student'}
+                      {item.studentEmail ? ` · ${item.studentEmail}` : ''}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {typeof item.purchaseAmount === 'number'
+                        ? formatMinor(item.purchaseAmount, item.purchaseCurrency || 'AED')
+                        : '—'}{' '}
+                      · {formatDate(item.purchaseDate)}
+                    </ThemedText>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={22} color={colors.icon} />
+                </View>
+              </TouchableOpacity>
             ))}
           </View>
         ) : view === 'pending' ? (
@@ -474,18 +496,32 @@ export default function CoachAcademScreen() {
                   <View
                     key={subject.id}
                     style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                    <ThemedText type="defaultSemiBold">
-                      {String(subject.subjectName || subject.id)}
-                    </ThemedText>
-                    <ThemedText style={styles.meta}>
-                      {[
-                        subject.subjectBoard ? String(subject.subjectBoard) : null,
-                        subject.subjectGrade != null ? `Grade ${subject.subjectGrade}` : null,
-                        subject.createdAt ? formatDate(String(subject.createdAt)) : null,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </ThemedText>
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      onPress={() =>
+                        router.push(
+                          `/home/coachacadem/subjects/${encodeURIComponent(subject.id)}`
+                        )
+                      }>
+                      <View style={styles.rowCardHeader}>
+                        <View style={{ flex: 1, gap: 4 }}>
+                          <ThemedText type="defaultSemiBold">
+                            {String(subject.subjectName || subject.id)}
+                          </ThemedText>
+                          <ThemedText style={styles.meta}>
+                            {[
+                              subject.subjectBoard ? String(subject.subjectBoard) : null,
+                              subject.subjectGrade != null ? `Grade ${subject.subjectGrade}` : null,
+                              subject.createdAt ? formatDate(String(subject.createdAt)) : null,
+                            ]
+                              .filter(Boolean)
+                              .join(' · ')}
+                          </ThemedText>
+                          <ThemedText style={styles.meta}>Tap for content & documents</ThemedText>
+                        </View>
+                        <MaterialIcons name="chevron-right" size={22} color={colors.icon} />
+                      </View>
+                    </TouchableOpacity>
                     <View style={styles.actionRow}>
                       <TouchableOpacity
                         style={[styles.actionButton, { backgroundColor: colors.tint, opacity: busy ? 0.6 : 1 }]}
@@ -520,12 +556,29 @@ export default function CoachAcademScreen() {
               <ThemedText style={styles.meta}>No abuse reports.</ThemedText>
             ) : (
               reports.map((item) => (
-                <View
+                <TouchableOpacity
                   key={item.id}
-                  style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                  <ThemedText type="defaultSemiBold">{String(item.reason || item.id)}</ThemedText>
-                  <ThemedText style={styles.meta}>{formatDate(item.createdAt)}</ThemedText>
-                </View>
+                  style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  activeOpacity={0.85}
+                  onPress={() =>
+                    router.push(`/home/coachacadem/reports/${encodeURIComponent(item.id)}`)
+                  }>
+                  <View style={styles.rowCardHeader}>
+                    <View style={{ flex: 1, gap: 4 }}>
+                      <ThemedText type="defaultSemiBold" numberOfLines={2}>
+                        {String(item.reportDescription || item.reason || item.id)}
+                      </ThemedText>
+                      <ThemedText style={styles.meta}>
+                        {item.subjectName ? String(item.subjectName) : 'Subject'}
+                        {item.reporterName ? ` · ${item.reporterName}` : ''}
+                      </ThemedText>
+                      <ThemedText style={styles.meta}>
+                        {String(item.reportStatus || 'PENDING')} · {formatDate(item.createdAt)}
+                      </ThemedText>
+                    </View>
+                    <MaterialIcons name="chevron-right" size={22} color={colors.icon} />
+                  </View>
+                </TouchableOpacity>
               ))
             )}
           </View>
@@ -623,6 +676,7 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 12, opacity: 0.7 },
   list: { gap: 10 },
   rowCard: { borderWidth: 1, borderRadius: 10, padding: 12, gap: 4 },
+  rowCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   meta: { fontSize: 12, opacity: 0.7 },
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
   actionButton: {
