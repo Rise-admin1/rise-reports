@@ -44,10 +44,14 @@ import {
   VolunteersResponse,
 } from '@/types/reports';
 import type {
+  SafariBooksBookDetail,
   SafariBooksBooksResponse,
+  SafariBooksListenerDetail,
   SafariBooksListenersResponse,
   SafariBooksPendingVerificationsResponse,
+  SafariBooksPublisherDetail,
   SafariBooksPublishersResponse,
+  SafariBooksPublisherType,
   SafariBooksStatsResponse,
 } from '@/types/safariBooks';
 import {
@@ -85,12 +89,18 @@ import {
   VaultSession,
 } from '@/types/vault';
 import type {
+  VeloAgentDetail,
   VeloAgentsResponse,
   VeloAppointmentRequestsResponse,
   VeloContactInquiriesResponse,
+  VeloContactInquiryDetail,
+  VeloListingDetail,
   VeloListingsResponse,
+  VeloPurchaseDetail,
   VeloPurchasesResponse,
+  VeloSenderDetail,
   VeloSendersResponse,
+  VeloShipmentDetail,
   VeloShipmentsResponse,
   VeloStatsResponse,
 } from '@/types/velo';
@@ -548,6 +558,78 @@ export async function fetchVeloAppointmentRequests(): Promise<VeloAppointmentReq
   return (await response.json()) as VeloAppointmentRequestsResponse;
 }
 
+export async function fetchVeloSenderDetail(userId: string): Promise<VeloSenderDetail> {
+  const response = await appFetch(
+    `${APP_API_BASE_URL}/velo/senders/${encodeURIComponent(userId)}`
+  );
+  if (!response.ok) {
+    await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
+  }
+  return (await response.json()) as VeloSenderDetail;
+}
+
+export async function fetchVeloAgentDetail(agentId: string): Promise<VeloAgentDetail> {
+  const response = await appFetch(
+    `${APP_API_BASE_URL}/velo/agents/${encodeURIComponent(agentId)}`
+  );
+  if (!response.ok) {
+    await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
+  }
+  return (await response.json()) as VeloAgentDetail;
+}
+
+export async function fetchVeloShipmentDetail(shipmentId: string): Promise<VeloShipmentDetail> {
+  const response = await appFetch(
+    `${APP_API_BASE_URL}/velo/shipments/${encodeURIComponent(shipmentId)}`
+  );
+  if (!response.ok) {
+    await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
+  }
+  return (await response.json()) as VeloShipmentDetail;
+}
+
+export async function fetchVeloPurchaseDetail(purchaseId: string): Promise<VeloPurchaseDetail> {
+  const response = await appFetch(
+    `${APP_API_BASE_URL}/velo/purchases/${encodeURIComponent(purchaseId)}`
+  );
+  if (!response.ok) {
+    await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
+  }
+  return (await response.json()) as VeloPurchaseDetail;
+}
+
+export async function fetchVeloListingDetail(listingId: string): Promise<VeloListingDetail> {
+  const response = await appFetch(
+    `${APP_API_BASE_URL}/velo/listings/${encodeURIComponent(listingId)}`
+  );
+  if (!response.ok) {
+    await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
+  }
+  return (await response.json()) as VeloListingDetail;
+}
+
+export async function fetchVeloContactInquiryDetail(
+  inquiryId: string
+): Promise<VeloContactInquiryDetail> {
+  const response = await appFetch(
+    `${APP_API_BASE_URL}/velo/contact-inquiries/${encodeURIComponent(inquiryId)}`
+  );
+  if (!response.ok) {
+    await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
+  }
+  return (await response.json()) as VeloContactInquiryDetail;
+}
+
+export async function fetchVeloAppointmentDetail(agentId: string): Promise<VeloAgentDetail> {
+  const response = await appFetch(
+    `${APP_API_BASE_URL}/velo/appointment-requests/${encodeURIComponent(agentId)}`
+  );
+  if (!response.ok) {
+    await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
+  }
+  return (await response.json()) as VeloAgentDetail;
+}
+
 export async function approveVeloAgentAppointment(agentId: string): Promise<void> {
   const response = await appFetch(
     `${APP_API_BASE_URL}/velo/agents/${encodeURIComponent(agentId)}/approve`,
@@ -654,6 +736,54 @@ export async function rejectSafariBooksPublisher(
   if (!response.ok) {
     await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
   }
+}
+
+export async function fetchSafariBooksListenerDetail(
+  userId: string
+): Promise<SafariBooksListenerDetail> {
+  const response = await appFetch(
+    `${APP_API_BASE_URL}/safari-books/listeners/${encodeURIComponent(userId)}`
+  );
+  if (!response.ok) {
+    await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
+  }
+  return (await response.json()) as SafariBooksListenerDetail;
+}
+
+export async function fetchSafariBooksPublisherDetail(
+  type: SafariBooksPublisherType,
+  publisherId: string
+): Promise<SafariBooksPublisherDetail> {
+  const response = await appFetch(
+    `${APP_API_BASE_URL}/safari-books/publishers/${encodeURIComponent(type)}/${encodeURIComponent(publisherId)}`
+  );
+  if (!response.ok) {
+    await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
+  }
+  return (await response.json()) as SafariBooksPublisherDetail;
+}
+
+export async function fetchSafariBooksBookDetail(bookId: string): Promise<SafariBooksBookDetail> {
+  const response = await appFetch(
+    `${APP_API_BASE_URL}/safari-books/books/${encodeURIComponent(bookId)}`
+  );
+  if (!response.ok) {
+    await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
+  }
+  return (await response.json()) as SafariBooksBookDetail;
+}
+
+export async function fetchSafariBooksPendingDetail(
+  type: SafariBooksPublisherType,
+  id: string
+): Promise<SafariBooksPublisherDetail> {
+  const response = await appFetch(
+    `${APP_API_BASE_URL}/safari-books/pending-verifications/${encodeURIComponent(type)}/${encodeURIComponent(id)}`
+  );
+  if (!response.ok) {
+    await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
+  }
+  return (await response.json()) as SafariBooksPublisherDetail;
 }
 
 export async function fetchScientificJournalsStats(): Promise<ScientificJournalsStatsResponse> {

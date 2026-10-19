@@ -303,71 +303,113 @@ export default function SafariBooksScreen() {
           <View style={styles.list}>
             <ThemedText style={styles.meta}>Total {listenersTotal}</ThemedText>
             {listeners.map((item) => (
-              <View
+              <TouchableOpacity
                 key={item.id}
-                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <ThemedText type="defaultSemiBold">{item.name}</ThemedText>
-                <ThemedText style={styles.meta}>{item.email}</ThemedText>
-                <ThemedText style={styles.meta}>
-                  Joined {formatDate(item.createdAt)} · library {item.libraryCount} · bookmarks{' '}
-                  {item.bookmarksCount} · likes {item.likesCount}
-                </ThemedText>
-              </View>
+                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() =>
+                  router.push(`/home/safaribooks/listeners/${encodeURIComponent(item.id)}`)
+                }
+                activeOpacity={0.85}>
+                <View style={styles.rowCardInner}>
+                  <View style={styles.rowCardText}>
+                    <ThemedText type="defaultSemiBold">{item.name}</ThemedText>
+                    <ThemedText style={styles.meta}>{item.email}</ThemedText>
+                    <ThemedText style={styles.meta}>
+                      Joined {formatDate(item.createdAt)} · library {item.libraryCount} · bookmarks{' '}
+                      {item.bookmarksCount} · likes {item.likesCount}
+                    </ThemedText>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={22} color={colors.icon} />
+                </View>
+              </TouchableOpacity>
             ))}
           </View>
         ) : view === 'publishers' ? (
           <View style={styles.list}>
             <ThemedText style={styles.meta}>Total {publishersTotal}</ThemedText>
             {publishers.map((item) => (
-              <View
+              <TouchableOpacity
                 key={`${item.type}-${item.id}`}
-                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <ThemedText type="defaultSemiBold">{item.displayName}</ThemedText>
-                <ThemedText style={styles.meta}>
-                  {item.type} · {item.email || '—'}
-                </ThemedText>
-                <ThemedText style={styles.meta}>
-                  {item.bookTitle || 'No book title'} · books {item.booksCount} ·{' '}
-                  {item.isVerified ? 'verified' : item.isRejected ? 'rejected' : 'pending'}
-                </ThemedText>
-                <ThemedText style={styles.meta}>{formatDate(item.createdAt)}</ThemedText>
-              </View>
+                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() =>
+                  router.push(
+                    `/home/safaribooks/publishers/${encodeURIComponent(item.type)}/${encodeURIComponent(item.id)}`
+                  )
+                }
+                activeOpacity={0.85}>
+                <View style={styles.rowCardInner}>
+                  <View style={styles.rowCardText}>
+                    <ThemedText type="defaultSemiBold">{item.displayName}</ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {item.type} · {item.email || '—'}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {item.bookTitle || 'No book title'} · books {item.booksCount} ·{' '}
+                      {item.isVerified ? 'verified' : item.isRejected ? 'rejected' : 'pending'}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>{formatDate(item.createdAt)}</ThemedText>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={22} color={colors.icon} />
+                </View>
+              </TouchableOpacity>
             ))}
           </View>
         ) : view === 'books' ? (
           <View style={styles.list}>
             <ThemedText style={styles.meta}>Total {booksTotal}</ThemedText>
             {books.map((item) => (
-              <View
+              <TouchableOpacity
                 key={item.id}
-                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <ThemedText type="defaultSemiBold">{item.title}</ThemedText>
-                <ThemedText style={styles.meta}>
-                  {item.authorName} · {item.publisher}
-                </ThemedText>
-                <ThemedText style={styles.meta}>
-                  {item.isPublished ? 'Published' : 'Draft'}
-                  {item.featuredBook ? ' · featured' : ''} · library {item.libraryCount} · likes{' '}
-                  {item.likesCount}
-                </ThemedText>
-                <ThemedText style={styles.meta}>{formatDate(item.createdAt)}</ThemedText>
-              </View>
+                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() =>
+                  router.push(`/home/safaribooks/books/${encodeURIComponent(item.id)}`)
+                }
+                activeOpacity={0.85}>
+                <View style={styles.rowCardInner}>
+                  <View style={styles.rowCardText}>
+                    <ThemedText type="defaultSemiBold">{item.title}</ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {item.authorName} · {item.publisher}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {item.isPublished ? 'Published' : 'Draft'}
+                      {item.featuredBook ? ' · featured' : ''} · library {item.libraryCount} · likes{' '}
+                      {item.likesCount}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>{formatDate(item.createdAt)}</ThemedText>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={22} color={colors.icon} />
+                </View>
+              </TouchableOpacity>
             ))}
           </View>
         ) : view === 'pending' ? (
           <View style={styles.list}>
             <ThemedText style={styles.meta}>Pending {pending.length}</ThemedText>
             {pending.map((item) => (
-              <View
+              <TouchableOpacity
                 key={`${item.kind}-${item.id}`}
-                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <ThemedText type="defaultSemiBold">
-                  {item.kind === 'company' ? item.companyName || 'Company' : item.fullName || 'Author'}
-                </ThemedText>
-                <ThemedText style={styles.meta}>
-                  {item.kind} · {item.user?.email || '—'}
-                </ThemedText>
-                <ThemedText style={styles.meta}>{item.title || 'No book title yet'}</ThemedText>
+                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() =>
+                  router.push(
+                    `/home/safaribooks/pending/${encodeURIComponent(item.kind)}/${encodeURIComponent(item.id)}`
+                  )
+                }
+                activeOpacity={0.85}>
+                <View style={styles.rowCardInner}>
+                  <View style={styles.rowCardText}>
+                    <ThemedText type="defaultSemiBold">
+                      {item.kind === 'company'
+                        ? item.companyName || 'Company'
+                        : item.fullName || 'Author'}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {item.kind} · {item.user?.email || '—'}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>{item.title || 'No book title yet'}</ThemedText>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={22} color={colors.icon} />
+                </View>
                 <View style={styles.actionRow}>
                   <TouchableOpacity
                     style={[styles.actionButton, styles.rejectButton, { borderColor: '#c0392b' }]}
@@ -378,7 +420,7 @@ export default function SafariBooksScreen() {
                     <ThemedText style={styles.rejectButtonText}>Reject</ThemedText>
                   </TouchableOpacity>
                 </View>
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
         ) : null}
@@ -469,6 +511,8 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 12, opacity: 0.7 },
   list: { gap: 10 },
   rowCard: { borderWidth: 1, borderRadius: 10, padding: 12, gap: 4 },
+  rowCardInner: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  rowCardText: { flex: 1, gap: 4 },
   meta: { fontSize: 12, opacity: 0.7 },
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
   actionButton: {

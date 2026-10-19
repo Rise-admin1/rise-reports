@@ -401,114 +401,158 @@ export default function VeloScreen() {
           <View style={styles.list}>
             <ThemedText style={styles.meta}>Total {sendersTotal}</ThemedText>
             {senders.map((item) => (
-              <View
+              <TouchableOpacity
                 key={item.id}
-                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <ThemedText type="defaultSemiBold">{item.name}</ThemedText>
-                <ThemedText style={styles.meta}>{item.email}</ThemedText>
-                <ThemedText style={styles.meta}>
-                  Joined {formatDate(item.createdAt)} · {item.shipmentsCount} shipments ·{' '}
-                  {item.registerVerificationStatus}
-                </ThemedText>
-              </View>
+                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() => router.push(`/home/velo/senders/${encodeURIComponent(item.id)}`)}
+                activeOpacity={0.85}>
+                <View style={styles.rowCardInner}>
+                  <View style={styles.rowCardText}>
+                    <ThemedText type="defaultSemiBold">{item.name}</ThemedText>
+                    <ThemedText style={styles.meta}>{item.email}</ThemedText>
+                    <ThemedText style={styles.meta}>
+                      Joined {formatDate(item.createdAt)} · {item.shipmentsCount} shipments ·{' '}
+                      {item.registerVerificationStatus}
+                    </ThemedText>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={22} color={colors.icon} />
+                </View>
+              </TouchableOpacity>
             ))}
           </View>
         ) : view === 'agents' ? (
           <View style={styles.list}>
             <ThemedText style={styles.meta}>Total {agentsTotal}</ThemedText>
             {agents.map((item) => (
-              <View
+              <TouchableOpacity
                 key={item.id}
-                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <ThemedText type="defaultSemiBold">{item.name}</ThemedText>
-                <ThemedText style={styles.meta}>
-                  {item.email} · {item.role}
-                </ThemedText>
-                <ThemedText style={styles.meta}>
-                  {item.organisationName || 'No org'} · {item.registerVerificationStatus}
-                </ThemedText>
-                <ThemedText style={styles.meta}>Joined {formatDate(item.createdAt)}</ThemedText>
-              </View>
+                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() => router.push(`/home/velo/agents/${encodeURIComponent(item.id)}`)}
+                activeOpacity={0.85}>
+                <View style={styles.rowCardInner}>
+                  <View style={styles.rowCardText}>
+                    <ThemedText type="defaultSemiBold">{item.name}</ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {item.email} · {item.role}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {item.organisationName || 'No org'} · {item.registerVerificationStatus}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>Joined {formatDate(item.createdAt)}</ThemedText>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={22} color={colors.icon} />
+                </View>
+              </TouchableOpacity>
             ))}
           </View>
         ) : view === 'shipments' ? (
           <View style={styles.list}>
             <ThemedText style={styles.meta}>Total {shipmentsTotal}</ThemedText>
             {shipments.map((item) => (
-              <View
+              <TouchableOpacity
                 key={item.id}
-                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <ThemedText type="defaultSemiBold">{item.shipmentId}</ThemedText>
-                <ThemedText style={styles.meta}>
-                  {item.shipmentStatus}
-                  {item.paymentSuccess ? ' · paid' : ''}
-                </ThemedText>
-                <ThemedText style={styles.meta}>
-                  {item.senderName || item.userName || 'Sender'} → {item.receiverLocation || '—'}
-                </ThemedText>
-                <ThemedText style={styles.meta}>
-                  {typeof item.paymentAmount === 'number'
-                    ? formatMoney(item.paymentAmount, item.paymentCurrency || 'USD')
-                    : '—'}{' '}
-                  · {formatDate(item.shipmentDate)}
-                </ThemedText>
-              </View>
+                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() => router.push(`/home/velo/shipments/${encodeURIComponent(item.id)}`)}
+                activeOpacity={0.85}>
+                <View style={styles.rowCardInner}>
+                  <View style={styles.rowCardText}>
+                    <ThemedText type="defaultSemiBold">{item.shipmentId}</ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {item.shipmentStatus}
+                      {item.paymentSuccess ? ' · paid' : ''}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {item.senderName || item.userName || 'Sender'} → {item.receiverLocation || '—'}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {typeof item.paymentAmount === 'number'
+                        ? formatMoney(item.paymentAmount, item.paymentCurrency || 'USD')
+                        : '—'}{' '}
+                      · {formatDate(item.shipmentDate)}
+                    </ThemedText>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={22} color={colors.icon} />
+                </View>
+              </TouchableOpacity>
             ))}
           </View>
         ) : view === 'purchases' ? (
           <View style={styles.list}>
             <ThemedText style={styles.meta}>Total {purchasesTotal}</ThemedText>
             {purchases.map((item) => (
-              <View
+              <TouchableOpacity
                 key={item.id}
-                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <ThemedText type="defaultSemiBold">{item.shipmentId}</ThemedText>
-                <ThemedText style={styles.meta}>
-                  {item.senderName || 'Sender'}
-                  {item.senderEmail ? ` · ${item.senderEmail}` : ''}
-                </ThemedText>
-                <ThemedText style={styles.meta}>
-                  {typeof item.paymentAmount === 'number'
-                    ? formatMoney(item.paymentAmount, item.paymentCurrency || 'USD')
-                    : '—'}{' '}
-                  · {formatDate(item.purchaseDate)}
-                </ThemedText>
-              </View>
+                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() => router.push(`/home/velo/purchases/${encodeURIComponent(item.id)}`)}
+                activeOpacity={0.85}>
+                <View style={styles.rowCardInner}>
+                  <View style={styles.rowCardText}>
+                    <ThemedText type="defaultSemiBold">{item.shipmentId}</ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {item.senderName || 'Sender'}
+                      {item.senderEmail ? ` · ${item.senderEmail}` : ''}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {typeof item.paymentAmount === 'number'
+                        ? formatMoney(item.paymentAmount, item.paymentCurrency || 'USD')
+                        : '—'}{' '}
+                      · {formatDate(item.purchaseDate)}
+                    </ThemedText>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={22} color={colors.icon} />
+                </View>
+              </TouchableOpacity>
             ))}
           </View>
         ) : view === 'listings' ? (
           <View style={styles.list}>
             <ThemedText style={styles.meta}>Total {listingsTotal}</ThemedText>
             {listings.map((item) => (
-              <View
+              <TouchableOpacity
                 key={item.id}
-                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <ThemedText type="defaultSemiBold">{item.title}</ThemedText>
-                <ThemedText style={styles.meta}>
-                  {formatMoney(item.price)} · {item.condition}
-                  {item.categoryName ? ` · ${item.categoryName}` : ''}
-                </ThemedText>
-                <ThemedText style={styles.meta}>
-                  {item.agentName || 'Agent'}
-                  {item.organisationName ? ` · ${item.organisationName}` : ''}
-                </ThemedText>
-                <ThemedText style={styles.meta}>{formatDate(item.createdAt)}</ThemedText>
-              </View>
+                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() => router.push(`/home/velo/listings/${encodeURIComponent(item.id)}`)}
+                activeOpacity={0.85}>
+                <View style={styles.rowCardInner}>
+                  <View style={styles.rowCardText}>
+                    <ThemedText type="defaultSemiBold">{item.title}</ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {formatMoney(item.price)} · {item.condition}
+                      {item.categoryName ? ` · ${item.categoryName}` : ''}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {item.agentName || 'Agent'}
+                      {item.organisationName ? ` · ${item.organisationName}` : ''}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>{formatDate(item.createdAt)}</ThemedText>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={22} color={colors.icon} />
+                </View>
+              </TouchableOpacity>
             ))}
           </View>
         ) : view === 'appointments' ? (
           <View style={styles.list}>
             <ThemedText style={styles.meta}>Pending {appointments.length}</ThemedText>
             {appointments.map((item) => (
-              <View
+              <TouchableOpacity
                 key={item.id}
-                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <ThemedText type="defaultSemiBold">{item.name || 'Agent'}</ThemedText>
-                <ThemedText style={styles.meta}>{item.email || '—'}</ThemedText>
-                <ThemedText style={styles.meta}>
-                  {item.organisation?.organisationName || 'Organisation'} ·{' '}
-                  {formatDate(item.appointmentDate)}
-                </ThemedText>
+                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() =>
+                  router.push(`/home/velo/appointments/${encodeURIComponent(item.id)}`)
+                }
+                activeOpacity={0.85}>
+                <View style={styles.rowCardInner}>
+                  <View style={styles.rowCardText}>
+                    <ThemedText type="defaultSemiBold">{item.name || 'Agent'}</ThemedText>
+                    <ThemedText style={styles.meta}>{item.email || '—'}</ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {item.organisation?.organisationName || 'Organisation'} ·{' '}
+                      {formatDate(item.appointmentDate)}
+                    </ThemedText>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={22} color={colors.icon} />
+                </View>
                 <View style={styles.actionRow}>
                   <TouchableOpacity
                     style={[styles.actionButton, { backgroundColor: colors.tint, opacity: actionId === item.id ? 0.6 : 1 }]}
@@ -527,21 +571,32 @@ export default function VeloScreen() {
                     <ThemedText style={styles.rejectButtonText}>Decline</ThemedText>
                   </TouchableOpacity>
                 </View>
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
         ) : view === 'inquiries' ? (
           <View style={styles.list}>
             <ThemedText style={styles.meta}>Total {inquiriesTotal}</ThemedText>
             {inquiries.map((item) => (
-              <View
+              <TouchableOpacity
                 key={item.id}
-                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <ThemedText type="defaultSemiBold">{item.name || 'Inquiry'}</ThemedText>
-                <ThemedText style={styles.meta}>{item.email || '—'}</ThemedText>
-                <ThemedText style={styles.meta}>{item.message || '—'}</ThemedText>
-                <ThemedText style={styles.meta}>{formatDate(item.createdAt)}</ThemedText>
-              </View>
+                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() =>
+                  router.push(`/home/velo/inquiries/${encodeURIComponent(item.id)}`)
+                }
+                activeOpacity={0.85}>
+                <View style={styles.rowCardInner}>
+                  <View style={styles.rowCardText}>
+                    <ThemedText type="defaultSemiBold">{item.name || 'Inquiry'}</ThemedText>
+                    <ThemedText style={styles.meta}>{item.email || '—'}</ThemedText>
+                    <ThemedText style={styles.meta} numberOfLines={2}>
+                      {item.message || '—'}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>{formatDate(item.createdAt)}</ThemedText>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={22} color={colors.icon} />
+                </View>
+              </TouchableOpacity>
             ))}
           </View>
         ) : null}
@@ -590,6 +645,8 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 12, opacity: 0.7 },
   list: { gap: 10 },
   rowCard: { borderWidth: 1, borderRadius: 10, padding: 12, gap: 4 },
+  rowCardInner: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  rowCardText: { flex: 1, gap: 4 },
   meta: { fontSize: 12, opacity: 0.7 },
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
   actionButton: {
