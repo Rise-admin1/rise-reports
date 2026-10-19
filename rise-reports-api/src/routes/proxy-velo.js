@@ -36,23 +36,49 @@ router.get('/stats', requirePermission('VELO_STATS'), async (_req, res) => {
 router.get('/senders', requirePermission('VELO_SENDERS'), (req, res) =>
   proxyVelo('/admin/senders', req, res)
 );
+router.get('/senders/:userId', requirePermission('VELO_SENDERS'), (req, res) =>
+  proxyVelo(`/admin/senders/${encodeURIComponent(req.params.userId)}`, req, res)
+);
 router.get('/agents', requirePermission('VELO_AGENTS'), (req, res) =>
   proxyVelo('/admin/agents', req, res)
+);
+router.get('/agents/:agentId', requirePermission('VELO_AGENTS'), (req, res) =>
+  proxyVelo(`/admin/agents/${encodeURIComponent(req.params.agentId)}`, req, res)
 );
 router.get('/shipments', requirePermission('VELO_SHIPMENTS'), (req, res) =>
   proxyVelo('/admin/shipments', req, res)
 );
+router.get('/shipments/:shipmentId', requirePermission('VELO_SHIPMENTS'), (req, res) =>
+  proxyVelo(`/admin/shipments/${encodeURIComponent(req.params.shipmentId)}`, req, res)
+);
 router.get('/purchases', requirePermission('VELO_PURCHASES'), (req, res) =>
   proxyVelo('/admin/purchases', req, res)
+);
+router.get('/purchases/:purchaseId', requirePermission('VELO_PURCHASES'), (req, res) =>
+  proxyVelo(`/admin/purchases/${encodeURIComponent(req.params.purchaseId)}`, req, res)
 );
 router.get('/contact-inquiries', requirePermission('VELO_CONTACT_INQUIRIES'), (req, res) =>
   proxyVelo('/admin/contact-inquiries', req, res)
 );
+router.get(
+  '/contact-inquiries/:inquiryId',
+  requirePermission('VELO_CONTACT_INQUIRIES'),
+  (req, res) =>
+    proxyVelo(`/admin/contact-inquiries/${encodeURIComponent(req.params.inquiryId)}`, req, res)
+);
 router.get('/listings', requirePermission('VELO_LISTINGS'), (req, res) =>
   proxyVelo('/admin/listings', req, res)
 );
+router.get('/listings/:listingId', requirePermission('VELO_LISTINGS'), (req, res) =>
+  proxyVelo(`/admin/listings/${encodeURIComponent(req.params.listingId)}`, req, res)
+);
 router.get('/appointment-requests', requirePermission('VELO_APPOINTMENTS'), (req, res) =>
   proxyVelo('/admin/appointment-requests', req, res)
+);
+router.get(
+  '/appointment-requests/:agentId',
+  requirePermission('VELO_APPOINTMENTS'),
+  (req, res) => proxyVelo(`/admin/agents/${encodeURIComponent(req.params.agentId)}`, req, res)
 );
 
 router.put('/agents/:agentId/approve', requirePermission('VELO_APPOINTMENTS'), (req, res) =>
