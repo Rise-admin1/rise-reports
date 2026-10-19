@@ -419,33 +419,53 @@ export default function ScientificJournalsScreen() {
           <View style={styles.list}>
             <ThemedText style={styles.meta}>Total {usersTotal}</ThemedText>
             {users.map((item) => (
-              <View
+              <TouchableOpacity
                 key={item.id}
-                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <ThemedText type="defaultSemiBold">{item.name || 'User'}</ThemedText>
-                <ThemedText style={styles.meta}>{item.email}</ThemedText>
-                <ThemedText style={styles.meta}>
-                  {item.affiliation || '—'} · articles {item.articlesCount}
-                </ThemedText>
-                <ThemedText style={styles.meta}>Joined {formatDate(item.createdAt)}</ThemedText>
-              </View>
+                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() =>
+                  router.push(`/home/scientificjournals/users/${encodeURIComponent(item.id)}`)
+                }
+                activeOpacity={0.85}>
+                <View style={styles.rowCardInner}>
+                  <View style={styles.rowCardText}>
+                    <ThemedText type="defaultSemiBold">{item.name || 'User'}</ThemedText>
+                    <ThemedText style={styles.meta}>{item.email}</ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {item.affiliation || '—'} · articles {item.articlesCount}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>Joined {formatDate(item.createdAt)}</ThemedText>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={22} color={colors.icon} />
+                </View>
+              </TouchableOpacity>
             ))}
           </View>
         ) : view === 'reviewers' ? (
           <View style={styles.list}>
             <ThemedText style={styles.meta}>Total {reviewersTotal}</ThemedText>
             {reviewers.map((item) => (
-              <View
+              <TouchableOpacity
                 key={item.id}
-                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <ThemedText type="defaultSemiBold">{item.name || 'Reviewer'}</ThemedText>
-                <ThemedText style={styles.meta}>{item.email}</ThemedText>
-                <ThemedText style={styles.meta}>
-                  {item.affiliation || '—'} ·{' '}
-                  {item.reviewerApproved ? 'approved' : 'pending'} · accepted{' '}
-                  {item.acceptedArticlesCount}
-                </ThemedText>
-                <ThemedText style={styles.meta}>Joined {formatDate(item.createdAt)}</ThemedText>
+                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() =>
+                  router.push(
+                    `/home/scientificjournals/reviewers/${encodeURIComponent(item.id)}`
+                  )
+                }
+                activeOpacity={0.85}>
+                <View style={styles.rowCardInner}>
+                  <View style={styles.rowCardText}>
+                    <ThemedText type="defaultSemiBold">{item.name || 'Reviewer'}</ThemedText>
+                    <ThemedText style={styles.meta}>{item.email}</ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {item.affiliation || '—'} ·{' '}
+                      {item.reviewerApproved ? 'approved' : 'pending'} · accepted{' '}
+                      {item.acceptedArticlesCount}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>Joined {formatDate(item.createdAt)}</ThemedText>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={22} color={colors.icon} />
+                </View>
                 {!item.reviewerApproved ? (
                   <View style={styles.actionRow}>
                     <TouchableOpacity
@@ -469,93 +489,137 @@ export default function ScientificJournalsScreen() {
                     </TouchableOpacity>
                   </View>
                 ) : null}
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
         ) : view === 'articles' ? (
           <View style={styles.list}>
             <ThemedText style={styles.meta}>Total {articlesTotal}</ThemedText>
             {articles.map((item) => (
-              <View
+              <TouchableOpacity
                 key={item.id}
-                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <ThemedText type="defaultSemiBold">{item.title}</ThemedText>
-                <ThemedText style={styles.meta}>
-                  {item.journalAbbreviation || item.journalTitle || 'Journal'} · Vol {item.volume} Iss{' '}
-                  {item.issue}
-                </ThemedText>
-                <ThemedText style={styles.meta}>
-                  {item.status}
-                  {item.paymentStatus ? ' · paid' : ''} · {item.accessModel}
-                </ThemedText>
-                <ThemedText style={styles.meta}>
-                  {item.submitterName || item.submitterEmail || 'Submitter'} ·{' '}
-                  {formatDate(item.createdAt)}
-                </ThemedText>
-              </View>
+                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() =>
+                  router.push(
+                    `/home/scientificjournals/articles/${encodeURIComponent(item.id)}`
+                  )
+                }
+                activeOpacity={0.85}>
+                <View style={styles.rowCardInner}>
+                  <View style={styles.rowCardText}>
+                    <ThemedText type="defaultSemiBold">{item.title}</ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {item.journalAbbreviation || item.journalTitle || 'Journal'} · Vol{' '}
+                      {item.volume} Iss {item.issue}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {item.status}
+                      {item.paymentStatus ? ' · paid' : ''} · {item.accessModel}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {item.submitterName || item.submitterEmail || 'Submitter'} ·{' '}
+                      {formatDate(item.createdAt)}
+                    </ThemedText>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={22} color={colors.icon} />
+                </View>
+              </TouchableOpacity>
             ))}
           </View>
         ) : view === 'payments' ? (
           <View style={styles.list}>
             <ThemedText style={styles.meta}>Total {paymentsTotal}</ThemedText>
             {payments.map((item) => (
-              <View
+              <TouchableOpacity
                 key={item.id}
-                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <ThemedText type="defaultSemiBold">{item.articleTitle}</ThemedText>
-                <ThemedText style={styles.meta}>
-                  {item.payerName || item.payerEmail || 'Payer'}
-                </ThemedText>
-                <ThemedText style={styles.meta}>
-                  {typeof item.paymentAmount === 'number'
-                    ? formatMinor(item.paymentAmount, item.paymentCurrency || 'AED')
-                    : '—'}{' '}
-                  · {formatDate(item.paymentDate)}
-                </ThemedText>
-                <ThemedText style={styles.meta}>{item.journalTitle || '—'}</ThemedText>
-              </View>
+                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() =>
+                  router.push(
+                    `/home/scientificjournals/payments/${encodeURIComponent(item.id)}`
+                  )
+                }
+                activeOpacity={0.85}>
+                <View style={styles.rowCardInner}>
+                  <View style={styles.rowCardText}>
+                    <ThemedText type="defaultSemiBold">{item.articleTitle}</ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {item.payerName || item.payerEmail || 'Payer'}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {typeof item.paymentAmount === 'number'
+                        ? formatMinor(item.paymentAmount, item.paymentCurrency || 'AED')
+                        : '—'}{' '}
+                      · {formatDate(item.paymentDate)}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>{item.journalTitle || '—'}</ThemedText>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={22} color={colors.icon} />
+                </View>
+              </TouchableOpacity>
             ))}
           </View>
         ) : view === 'subscriptions' ? (
           <View style={styles.list}>
             <ThemedText style={styles.meta}>Total {subscriptionsTotal}</ThemedText>
             {subscriptions.map((item) => (
-              <View
+              <TouchableOpacity
                 key={item.id}
-                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <ThemedText type="defaultSemiBold">{item.userName || item.email}</ThemedText>
-                <ThemedText style={styles.meta}>{item.email}</ThemedText>
-                <ThemedText style={styles.meta}>
-                  {formatMinor(item.amountMinor)} · {item.isActive ? 'active' : 'inactive'}
-                </ThemedText>
-                <ThemedText style={styles.meta}>
-                  {formatUnix(item.periodStart)} → {formatUnix(item.periodEnd)}
-                </ThemedText>
-              </View>
+                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() =>
+                  router.push(
+                    `/home/scientificjournals/subscriptions/${encodeURIComponent(item.id)}`
+                  )
+                }
+                activeOpacity={0.85}>
+                <View style={styles.rowCardInner}>
+                  <View style={styles.rowCardText}>
+                    <ThemedText type="defaultSemiBold">{item.userName || item.email}</ThemedText>
+                    <ThemedText style={styles.meta}>{item.email}</ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {formatMinor(item.amountMinor)} · {item.isActive ? 'active' : 'inactive'}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {formatUnix(item.periodStart)} → {formatUnix(item.periodEnd)}
+                    </ThemedText>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={22} color={colors.icon} />
+                </View>
+              </TouchableOpacity>
             ))}
           </View>
         ) : view === 'fullIssues' ? (
           <View style={styles.list}>
             <ThemedText style={styles.meta}>Total {fullIssuesTotal}</ThemedText>
             {fullIssues.map((item) => (
-              <View
+              <TouchableOpacity
                 key={item.paymentIntent}
-                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <ThemedText type="defaultSemiBold">
-                  {item.journalAbbreviation || item.journalTitle || 'Issue'}
-                </ThemedText>
-                <ThemedText style={styles.meta}>
-                  Vol {item.volume ?? '—'} Iss {item.issue ?? '—'}
-                </ThemedText>
-                <ThemedText style={styles.meta}>
-                  {item.userName || item.userEmail || 'Buyer'}
-                </ThemedText>
-                <ThemedText style={styles.meta}>
-                  {typeof item.amountMinor === 'number'
-                    ? formatMinor(item.amountMinor, item.currency || 'AED')
-                    : '—'}
-                </ThemedText>
-              </View>
+                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() =>
+                  router.push(
+                    `/home/scientificjournals/full-issues/${encodeURIComponent(item.paymentIntent)}`
+                  )
+                }
+                activeOpacity={0.85}>
+                <View style={styles.rowCardInner}>
+                  <View style={styles.rowCardText}>
+                    <ThemedText type="defaultSemiBold">
+                      {item.journalAbbreviation || item.journalTitle || 'Issue'}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>
+                      Vol {item.volume ?? '—'} Iss {item.issue ?? '—'}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {item.userName || item.userEmail || 'Buyer'}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {typeof item.amountMinor === 'number'
+                        ? formatMinor(item.amountMinor, item.currency || 'AED')
+                        : '—'}
+                    </ThemedText>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={22} color={colors.icon} />
+                </View>
+              </TouchableOpacity>
             ))}
           </View>
         ) : null}
@@ -604,6 +668,8 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 12, opacity: 0.7 },
   list: { gap: 10 },
   rowCard: { borderWidth: 1, borderRadius: 10, padding: 12, gap: 4 },
+  rowCardInner: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  rowCardText: { flex: 1, gap: 4 },
   meta: { fontSize: 12, opacity: 0.7 },
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
   actionButton: {

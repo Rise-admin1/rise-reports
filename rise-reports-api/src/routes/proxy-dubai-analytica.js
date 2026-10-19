@@ -36,17 +36,46 @@ router.get('/stats', requirePermission('DUBAI_ANALYTICA_STATS'), async (_req, re
 router.get('/users', requirePermission('DUBAI_ANALYTICA_USERS'), (req, res) =>
   proxyDubaiAnalytica('/admin/users', req, res)
 );
+router.get('/users/:userId', requirePermission('DUBAI_ANALYTICA_USERS'), (req, res) =>
+  proxyDubaiAnalytica(`/admin/users/${encodeURIComponent(req.params.userId)}`, req, res)
+);
 router.get('/surveys', requirePermission('DUBAI_ANALYTICA_SURVEYS'), (req, res) =>
   proxyDubaiAnalytica('/admin/surveys', req, res)
+);
+router.get('/surveys/:surveyId', requirePermission('DUBAI_ANALYTICA_SURVEYS'), (req, res) =>
+  proxyDubaiAnalytica(`/admin/surveys/${encodeURIComponent(req.params.surveyId)}`, req, res)
 );
 router.get('/purchases', requirePermission('DUBAI_ANALYTICA_PURCHASES'), (req, res) =>
   proxyDubaiAnalytica('/admin/purchases', req, res)
 );
+router.get('/purchases/:purchaseId', requirePermission('DUBAI_ANALYTICA_PURCHASES'), (req, res) =>
+  proxyDubaiAnalytica(`/admin/purchases/${encodeURIComponent(req.params.purchaseId)}`, req, res)
+);
 router.get('/subscriptions', requirePermission('DUBAI_ANALYTICA_SUBSCRIPTIONS'), (req, res) =>
   proxyDubaiAnalytica('/admin/subscriptions', req, res)
 );
+router.get(
+  '/subscriptions/:subscriptionId',
+  requirePermission('DUBAI_ANALYTICA_SUBSCRIPTIONS'),
+  (req, res) =>
+    proxyDubaiAnalytica(
+      `/admin/subscriptions/${encodeURIComponent(req.params.subscriptionId)}`,
+      req,
+      res
+    )
+);
 router.get('/dri-payments', requirePermission('DUBAI_ANALYTICA_DRI_PAYMENTS'), (req, res) =>
   proxyDubaiAnalytica('/admin/dri-payments', req, res)
+);
+router.get(
+  '/dri-payments/:type/:paymentId',
+  requirePermission('DUBAI_ANALYTICA_DRI_PAYMENTS'),
+  (req, res) =>
+    proxyDubaiAnalytica(
+      `/admin/dri-payments/${encodeURIComponent(req.params.type)}/${encodeURIComponent(req.params.paymentId)}`,
+      req,
+      res
+    )
 );
 
 export default router;

@@ -30,6 +30,12 @@ import type {
   DubaiAnalyticaSubscriptionsResponse,
   DubaiAnalyticaSurveysResponse,
   DubaiAnalyticaUsersResponse,
+  DubaiAnalyticaDriPaymentDetail,
+  DubaiAnalyticaDriType,
+  DubaiAnalyticaPurchaseDetail,
+  DubaiAnalyticaSubscriptionDetail,
+  DubaiAnalyticaSurveyDetail,
+  DubaiAnalyticaUserDetail,
 } from '@/types/dubaiAnalytica';
 import {
   ExpoFieldFilters,
@@ -70,12 +76,18 @@ import {
   SessionCreditsResponse,
 } from '@/types/scheduling';
 import type {
+  ScientificJournalsArticleDetail,
   ScientificJournalsArticlesResponse,
+  ScientificJournalsFullIssuePurchaseDetail,
   ScientificJournalsFullIssuePurchasesResponse,
+  ScientificJournalsPaymentDetail,
   ScientificJournalsPaymentsResponse,
+  ScientificJournalsReviewerDetail,
   ScientificJournalsReviewersResponse,
   ScientificJournalsStatsResponse,
+  ScientificJournalsSubscriptionDetail,
   ScientificJournalsSubscriptionsResponse,
+  ScientificJournalsUserDetail,
   ScientificJournalsUsersResponse,
 } from '@/types/scientificJournals';
 import { Task, TaskAsset, TaskAssigneeUser, TaskStatus } from '@/types/tasks';
@@ -924,6 +936,78 @@ export async function rejectScientificJournalsReviewer(userId: string): Promise<
   }
 }
 
+export async function fetchScientificJournalsUserDetail(
+  userId: string
+): Promise<ScientificJournalsUserDetail> {
+  const response = await appFetch(
+    `${APP_API_BASE_URL}/scientific-journals/users/${encodeURIComponent(userId)}`
+  );
+  if (!response.ok) {
+    await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
+  }
+  return (await response.json()) as ScientificJournalsUserDetail;
+}
+
+export async function fetchScientificJournalsReviewerDetail(
+  userId: string
+): Promise<ScientificJournalsReviewerDetail> {
+  const response = await appFetch(
+    `${APP_API_BASE_URL}/scientific-journals/reviewers/${encodeURIComponent(userId)}`
+  );
+  if (!response.ok) {
+    await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
+  }
+  return (await response.json()) as ScientificJournalsReviewerDetail;
+}
+
+export async function fetchScientificJournalsArticleDetail(
+  articleId: string
+): Promise<ScientificJournalsArticleDetail> {
+  const response = await appFetch(
+    `${APP_API_BASE_URL}/scientific-journals/articles/${encodeURIComponent(articleId)}`
+  );
+  if (!response.ok) {
+    await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
+  }
+  return (await response.json()) as ScientificJournalsArticleDetail;
+}
+
+export async function fetchScientificJournalsPaymentDetail(
+  articleId: string
+): Promise<ScientificJournalsPaymentDetail> {
+  const response = await appFetch(
+    `${APP_API_BASE_URL}/scientific-journals/payments/${encodeURIComponent(articleId)}`
+  );
+  if (!response.ok) {
+    await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
+  }
+  return (await response.json()) as ScientificJournalsPaymentDetail;
+}
+
+export async function fetchScientificJournalsSubscriptionDetail(
+  subscriptionId: string
+): Promise<ScientificJournalsSubscriptionDetail> {
+  const response = await appFetch(
+    `${APP_API_BASE_URL}/scientific-journals/subscriptions/${encodeURIComponent(subscriptionId)}`
+  );
+  if (!response.ok) {
+    await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
+  }
+  return (await response.json()) as ScientificJournalsSubscriptionDetail;
+}
+
+export async function fetchScientificJournalsFullIssuePurchaseDetail(
+  paymentIntent: string
+): Promise<ScientificJournalsFullIssuePurchaseDetail> {
+  const response = await appFetch(
+    `${APP_API_BASE_URL}/scientific-journals/full-issue-purchases/${encodeURIComponent(paymentIntent)}`
+  );
+  if (!response.ok) {
+    await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
+  }
+  return (await response.json()) as ScientificJournalsFullIssuePurchaseDetail;
+}
+
 export async function fetchDubaiAnalyticaStats(): Promise<DubaiAnalyticaStatsResponse> {
   const response = await appFetch(`${APP_API_BASE_URL}/dubai-analytica/stats`);
   if (!response.ok) {
@@ -1018,6 +1102,67 @@ export async function fetchDubaiAnalyticaDriPayments(params?: {
     await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
   }
   return (await response.json()) as DubaiAnalyticaDriPaymentsResponse;
+}
+
+export async function fetchDubaiAnalyticaUserDetail(
+  userId: string
+): Promise<DubaiAnalyticaUserDetail> {
+  const response = await appFetch(
+    `${APP_API_BASE_URL}/dubai-analytica/users/${encodeURIComponent(userId)}`
+  );
+  if (!response.ok) {
+    await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
+  }
+  return (await response.json()) as DubaiAnalyticaUserDetail;
+}
+
+export async function fetchDubaiAnalyticaSurveyDetail(
+  surveyId: string
+): Promise<DubaiAnalyticaSurveyDetail> {
+  const response = await appFetch(
+    `${APP_API_BASE_URL}/dubai-analytica/surveys/${encodeURIComponent(surveyId)}`
+  );
+  if (!response.ok) {
+    await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
+  }
+  return (await response.json()) as DubaiAnalyticaSurveyDetail;
+}
+
+export async function fetchDubaiAnalyticaPurchaseDetail(
+  purchaseId: string
+): Promise<DubaiAnalyticaPurchaseDetail> {
+  const response = await appFetch(
+    `${APP_API_BASE_URL}/dubai-analytica/purchases/${encodeURIComponent(purchaseId)}`
+  );
+  if (!response.ok) {
+    await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
+  }
+  return (await response.json()) as DubaiAnalyticaPurchaseDetail;
+}
+
+export async function fetchDubaiAnalyticaSubscriptionDetail(
+  subscriptionId: string
+): Promise<DubaiAnalyticaSubscriptionDetail> {
+  const response = await appFetch(
+    `${APP_API_BASE_URL}/dubai-analytica/subscriptions/${encodeURIComponent(subscriptionId)}`
+  );
+  if (!response.ok) {
+    await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
+  }
+  return (await response.json()) as DubaiAnalyticaSubscriptionDetail;
+}
+
+export async function fetchDubaiAnalyticaDriPaymentDetail(
+  type: DubaiAnalyticaDriType,
+  paymentId: string
+): Promise<DubaiAnalyticaDriPaymentDetail> {
+  const response = await appFetch(
+    `${APP_API_BASE_URL}/dubai-analytica/dri-payments/${encodeURIComponent(type)}/${encodeURIComponent(paymentId)}`
+  );
+  if (!response.ok) {
+    await parseAppAuthError(response, `HTTP error! status: ${response.status}`);
+  }
+  return (await response.json()) as DubaiAnalyticaDriPaymentDetail;
 }
 
 export async function fetchFunyulaReports(

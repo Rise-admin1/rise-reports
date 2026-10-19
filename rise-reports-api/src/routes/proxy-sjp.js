@@ -36,20 +36,48 @@ router.get('/stats', requirePermission('SCIENTIFIC_JOURNALS_STATS'), async (_req
 router.get('/users', requirePermission('SCIENTIFIC_JOURNALS_USERS'), (req, res) =>
   proxySjp('/admin/users', req, res)
 );
+router.get('/users/:userId', requirePermission('SCIENTIFIC_JOURNALS_USERS'), (req, res) =>
+  proxySjp(`/admin/users/${encodeURIComponent(req.params.userId)}`, req, res)
+);
 router.get('/reviewers', requirePermission('SCIENTIFIC_JOURNALS_REVIEWERS'), (req, res) =>
   proxySjp('/admin/reviewers', req, res)
+);
+router.get('/reviewers/:userId', requirePermission('SCIENTIFIC_JOURNALS_REVIEWERS'), (req, res) =>
+  proxySjp(`/admin/reviewers/${encodeURIComponent(req.params.userId)}`, req, res)
 );
 router.get('/articles', requirePermission('SCIENTIFIC_JOURNALS_ARTICLES'), (req, res) =>
   proxySjp('/admin/articles', req, res)
 );
+router.get('/articles/:articleId', requirePermission('SCIENTIFIC_JOURNALS_ARTICLES'), (req, res) =>
+  proxySjp(`/admin/articles/${encodeURIComponent(req.params.articleId)}`, req, res)
+);
 router.get('/payments', requirePermission('SCIENTIFIC_JOURNALS_PAYMENTS'), (req, res) =>
   proxySjp('/admin/payments', req, res)
+);
+router.get('/payments/:articleId', requirePermission('SCIENTIFIC_JOURNALS_PAYMENTS'), (req, res) =>
+  proxySjp(`/admin/payments/${encodeURIComponent(req.params.articleId)}`, req, res)
 );
 router.get('/subscriptions', requirePermission('SCIENTIFIC_JOURNALS_SUBSCRIPTIONS'), (req, res) =>
   proxySjp('/admin/subscriptions', req, res)
 );
+router.get(
+  '/subscriptions/:subscriptionId',
+  requirePermission('SCIENTIFIC_JOURNALS_SUBSCRIPTIONS'),
+  (req, res) =>
+    proxySjp(`/admin/subscriptions/${encodeURIComponent(req.params.subscriptionId)}`, req, res)
+);
 router.get('/full-issue-purchases', requirePermission('SCIENTIFIC_JOURNALS_FULL_ISSUES'), (req, res) =>
   proxySjp('/admin/full-issue-purchases', req, res)
+);
+router.get(
+  '/full-issue-purchases/:paymentIntent',
+  requirePermission('SCIENTIFIC_JOURNALS_FULL_ISSUES'),
+  (req, res) =>
+    proxySjp(
+      `/admin/full-issue-purchases/${encodeURIComponent(req.params.paymentIntent)}`,
+      req,
+      res
+    )
 );
 
 router.post(

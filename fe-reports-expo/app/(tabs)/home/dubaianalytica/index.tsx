@@ -334,89 +334,138 @@ export default function DubaiAnalyticaScreen() {
           <View style={styles.list}>
             <ThemedText style={styles.meta}>Total {usersTotal}</ThemedText>
             {users.map((item) => (
-              <View
+              <TouchableOpacity
                 key={item.id}
-                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <ThemedText type="defaultSemiBold">{item.name || 'User'}</ThemedText>
-                <ThemedText style={styles.meta}>{item.email}</ThemedText>
-                <ThemedText style={styles.meta}>
-                  Surveys {item.surveysCount} · purchases {item.purchasesCount}
-                  {item.subscriptionActive ? ' · Pro active' : ''}
-                  {item.isSuperAdmin ? ' · super admin' : ''}
-                </ThemedText>
-                <ThemedText style={styles.meta}>Joined {formatDate(item.createdAt)}</ThemedText>
-              </View>
+                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() =>
+                  router.push(`/home/dubaianalytica/users/${encodeURIComponent(item.id)}`)
+                }
+                activeOpacity={0.85}>
+                <View style={styles.rowCardInner}>
+                  <View style={styles.rowCardText}>
+                    <ThemedText type="defaultSemiBold">{item.name || 'User'}</ThemedText>
+                    <ThemedText style={styles.meta}>{item.email}</ThemedText>
+                    <ThemedText style={styles.meta}>
+                      Surveys {item.surveysCount} · purchases {item.purchasesCount}
+                      {item.subscriptionActive ? ' · Pro active' : ''}
+                      {item.isSuperAdmin ? ' · super admin' : ''}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>Joined {formatDate(item.createdAt)}</ThemedText>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={22} color={colors.icon} />
+                </View>
+              </TouchableOpacity>
             ))}
           </View>
         ) : view === 'surveys' ? (
           <View style={styles.list}>
             <ThemedText style={styles.meta}>Total {surveysTotal}</ThemedText>
             {surveys.map((item) => (
-              <View
+              <TouchableOpacity
                 key={item.id}
-                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <ThemedText type="defaultSemiBold">{item.title}</ThemedText>
-                <ThemedText style={styles.meta}>
-                  {item.status} · views {item.views} · responses {item.responsesCount}
-                </ThemedText>
-                <ThemedText style={styles.meta}>
-                  {item.ownerName || item.ownerEmail || 'Owner'} · {formatDate(item.createdAt)}
-                </ThemedText>
-              </View>
+                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() =>
+                  router.push(`/home/dubaianalytica/surveys/${encodeURIComponent(item.id)}`)
+                }
+                activeOpacity={0.85}>
+                <View style={styles.rowCardInner}>
+                  <View style={styles.rowCardText}>
+                    <ThemedText type="defaultSemiBold">{item.title}</ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {item.status} · views {item.views} · responses {item.responsesCount}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {item.ownerName || item.ownerEmail || 'Owner'} · {formatDate(item.createdAt)}
+                    </ThemedText>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={22} color={colors.icon} />
+                </View>
+              </TouchableOpacity>
             ))}
           </View>
         ) : view === 'purchases' ? (
           <View style={styles.list}>
             <ThemedText style={styles.meta}>Total {purchasesTotal}</ThemedText>
             {purchases.map((item) => (
-              <View
+              <TouchableOpacity
                 key={item.id}
-                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <ThemedText type="defaultSemiBold">{item.name || item.email}</ThemedText>
-                <ThemedText style={styles.meta}>{item.email}</ThemedText>
-                <ThemedText style={styles.meta}>
-                  {formatMinor(item.amountPaid, item.currency)} · qty {item.quantity}
-                </ThemedText>
-                <ThemedText style={styles.meta}>
-                  {item.country || '—'} · {formatDate(item.createdAt)}
-                </ThemedText>
-              </View>
+                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() =>
+                  router.push(`/home/dubaianalytica/purchases/${encodeURIComponent(item.id)}`)
+                }
+                activeOpacity={0.85}>
+                <View style={styles.rowCardInner}>
+                  <View style={styles.rowCardText}>
+                    <ThemedText type="defaultSemiBold">{item.name || item.email}</ThemedText>
+                    <ThemedText style={styles.meta}>{item.email}</ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {formatMinor(item.amountPaid, item.currency)} · qty {item.quantity}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {item.country || '—'} · {formatDate(item.createdAt)}
+                    </ThemedText>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={22} color={colors.icon} />
+                </View>
+              </TouchableOpacity>
             ))}
           </View>
         ) : view === 'subscriptions' ? (
           <View style={styles.list}>
             <ThemedText style={styles.meta}>Total {subscriptionsTotal}</ThemedText>
             {subscriptions.map((item) => (
-              <View
+              <TouchableOpacity
                 key={item.id}
-                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <ThemedText type="defaultSemiBold">{item.userName || item.email}</ThemedText>
-                <ThemedText style={styles.meta}>{item.email}</ThemedText>
-                <ThemedText style={styles.meta}>
-                  {formatMinor(item.amountMinor)} · {item.isActive ? 'active' : 'inactive'}
-                </ThemedText>
-                <ThemedText style={styles.meta}>
-                  {formatUnix(item.periodStart)} → {formatUnix(item.periodEnd)}
-                </ThemedText>
-              </View>
+                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() =>
+                  router.push(
+                    `/home/dubaianalytica/subscriptions/${encodeURIComponent(item.id)}`
+                  )
+                }
+                activeOpacity={0.85}>
+                <View style={styles.rowCardInner}>
+                  <View style={styles.rowCardText}>
+                    <ThemedText type="defaultSemiBold">{item.userName || item.email}</ThemedText>
+                    <ThemedText style={styles.meta}>{item.email}</ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {formatMinor(item.amountMinor)} · {item.isActive ? 'active' : 'inactive'}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {formatUnix(item.periodStart)} → {formatUnix(item.periodEnd)}
+                    </ThemedText>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={22} color={colors.icon} />
+                </View>
+              </TouchableOpacity>
             ))}
           </View>
         ) : view === 'dri' ? (
           <View style={styles.list}>
             <ThemedText style={styles.meta}>Total {driTotal}</ThemedText>
             {driPayments.map((item) => (
-              <View
-                key={item.id}
-                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <ThemedText type="defaultSemiBold">
-                  {item.type === 'full' ? 'Full report' : 'Interim summary'}
-                </ThemedText>
-                <ThemedText style={styles.meta}>
-                  {item.respondentName || item.email || 'Respondent'}
-                </ThemedText>
-                <ThemedText style={styles.meta}>{item.surveyTitle || 'Survey'}</ThemedText>
-                <ThemedText style={styles.meta}>{formatDate(item.createdAt)}</ThemedText>
-              </View>
+              <TouchableOpacity
+                key={`${item.type}-${item.id}`}
+                style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() =>
+                  router.push(
+                    `/home/dubaianalytica/dri/${encodeURIComponent(item.type)}/${encodeURIComponent(item.id)}`
+                  )
+                }
+                activeOpacity={0.85}>
+                <View style={styles.rowCardInner}>
+                  <View style={styles.rowCardText}>
+                    <ThemedText type="defaultSemiBold">
+                      {item.type === 'full' ? 'Full report' : 'Interim summary'}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {item.respondentName || item.email || 'Respondent'}
+                    </ThemedText>
+                    <ThemedText style={styles.meta}>{item.surveyTitle || 'Survey'}</ThemedText>
+                    <ThemedText style={styles.meta}>{formatDate(item.createdAt)}</ThemedText>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={22} color={colors.icon} />
+                </View>
+              </TouchableOpacity>
             ))}
           </View>
         ) : null}
@@ -465,6 +514,8 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 12, opacity: 0.7 },
   list: { gap: 10 },
   rowCard: { borderWidth: 1, borderRadius: 10, padding: 12, gap: 4 },
+  rowCardInner: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  rowCardText: { flex: 1, gap: 4 },
   meta: { fontSize: 12, opacity: 0.7 },
   error: { color: '#c0392b', marginTop: 20 },
 });
