@@ -36,14 +36,40 @@ router.get('/stats', requirePermission('SAFARI_BOOKS_STATS'), async (_req, res) 
 router.get('/listeners', requirePermission('SAFARI_BOOKS_LISTENERS'), (req, res) =>
   proxySafariBooks('/admin/listeners', req, res)
 );
+router.get('/listeners/:userId', requirePermission('SAFARI_BOOKS_LISTENERS'), (req, res) =>
+  proxySafariBooks(`/admin/listeners/${encodeURIComponent(req.params.userId)}`, req, res)
+);
 router.get('/publishers', requirePermission('SAFARI_BOOKS_PUBLISHERS'), (req, res) =>
   proxySafariBooks('/admin/publishers', req, res)
+);
+router.get(
+  '/publishers/:type/:publisherId',
+  requirePermission('SAFARI_BOOKS_PUBLISHERS'),
+  (req, res) =>
+    proxySafariBooks(
+      `/admin/publishers/${encodeURIComponent(req.params.type)}/${encodeURIComponent(req.params.publisherId)}`,
+      req,
+      res
+    )
 );
 router.get('/books', requirePermission('SAFARI_BOOKS_BOOKS'), (req, res) =>
   proxySafariBooks('/admin/books', req, res)
 );
+router.get('/books/:bookId', requirePermission('SAFARI_BOOKS_BOOKS'), (req, res) =>
+  proxySafariBooks(`/admin/books/${encodeURIComponent(req.params.bookId)}`, req, res)
+);
 router.get('/pending-verifications', requirePermission('SAFARI_BOOKS_PENDING'), (req, res) =>
   proxySafariBooks('/admin/pending-verifications', req, res)
+);
+router.get(
+  '/pending-verifications/:type/:id',
+  requirePermission('SAFARI_BOOKS_PENDING'),
+  (req, res) =>
+    proxySafariBooks(
+      `/admin/publishers/${encodeURIComponent(req.params.type)}/${encodeURIComponent(req.params.id)}`,
+      req,
+      res
+    )
 );
 
 router.post('/reject-publisher/:id', requirePermission('SAFARI_BOOKS_PENDING'), (req, res) => {
