@@ -30,6 +30,26 @@ const ROUTE_NOTES = {
     ['/api/admin', 'Coach Academ admin lists.'],
     ['/api/app', 'App version check.'],
   ].sort((a, b) => b[0].length - a[0].length),
+  velo: [
+    ['/api/auth/forgot-password', 'Sends a password reset code.'],
+    ['/api/auth/verify-reset-otp', 'Checks a password reset code.'],
+    ['/api/auth/reset-password', 'Sets a new password from a reset code.'],
+    ['/api/auth/register', 'Creates a Velo account.'],
+    ['/api/auth/login', 'Signs in a Velo account.'],
+    ['/api/auth', 'Account checks, password changes, and appointments.'],
+    ['/api/velo-stripe', 'Stripe payment webhook.'],
+    ['/api/shipment', 'Shipment creation and tracking.'],
+    ['/api/organisation', 'Agent organisations.'],
+    ['/api/listing', 'Marketplace listings.'],
+    ['/api/category', 'Listing categories.'],
+    ['/api/country', 'Countries used by addresses and shipments.'],
+    ['/api/address', 'Saved addresses.'],
+    ['/api/stripe', 'Card payments.'],
+    ['/api/admin', 'Velo super-admin lists.'],
+    ['/api/web', 'Public website actions.'],
+    ['/api/rise', 'RISE integration calls.'],
+    ['/api/s3', 'File uploads.'],
+  ].sort((a, b) => b[0].length - a[0].length),
 };
 
 const SERVER_NOTES = {
@@ -46,6 +66,12 @@ const SERVER_NOTES = {
     'Stripe webhook needs the raw body and a matching webhook secret. 400 "Webhook Error" means the signature check failed. Booking conflicts are 409: the student or tutor should pick another time.',
     'Zoom webhook needs the raw body, x-zm-signature, x-zm-request-timestamp, and the Zoom secret. Missing any of those is 400 "Invalid Zoom webhook headers". A mismatch is 401 "Invalid signature". The Zoom URL-validation event does not use that signature.',
     'Browser calls must come from an allowed site origin. The native app sends no Origin and is allowed. A browser block often never becomes one of these rows.',
+  ].join(' '),
+  velo: [
+    'Velo is an Express API with MySQL through Prisma. Mail is Resend. Payments are Stripe. Files use S3.',
+    'These rows are failed HTTP calls only, status 400 and above, kept for 14 days. GET /health is not logged. Nothing is emailed because a row was logged. The ops page reads them through rise-reports-api.',
+    'A signed-in caller has a JWT with id, email, and role. Missing Authorization is 401 "You are not authenticated!". A bad signature is 403 "Token is not valid". Admin lists require role SUPERADMIN, otherwise 403 "Super admin access required".',
+    'Register, login, forgot-password, reset-code, and reset-password put the email in the request body. Other signed-in calls use the email on the token. Passwords and reset codes are stored as [redacted].',
   ].join(' '),
 };
 
