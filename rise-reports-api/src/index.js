@@ -13,6 +13,7 @@ import proxyVeloRoutes from './routes/proxy-velo.js';
 import proxySafariBooksRoutes from './routes/proxy-safari-books.js';
 import proxySjpRoutes from './routes/proxy-sjp.js';
 import proxyDubaiAnalyticaRoutes from './routes/proxy-dubai-analytica.js';
+import opsRoutes from './routes/ops.js';
 import { deleteExpiredSessions } from './services/session.js';
 
 const app = express();
@@ -37,6 +38,7 @@ app.use('/api/velo', proxyVeloRoutes);
 app.use('/api/safari-books', proxySafariBooksRoutes);
 app.use('/api/scientific-journals', proxySjpRoutes);
 app.use('/api/dubai-analytica', proxyDubaiAnalyticaRoutes);
+app.use('/api/ops', opsRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);
