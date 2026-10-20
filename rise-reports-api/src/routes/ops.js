@@ -172,4 +172,31 @@ router.get('/assets/coach-academ/logs', requireOps, async (req, res) => {
   }
 });
 
+router.post('/assets/coach-academ/logs/:logId/ask', requireOps, async (req, res) => {
+  try {
+    const response = await coachAcademFetch(
+      `/admin/request-logs/${encodeURIComponent(req.params.logId)}/ask`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: req.body?.message || '' }),
+      }
+    );
+    const body = await response.json().catch(() => null);
+    if (!response.ok) {
+      return res.status(response.status).json(
+        body && typeof body === 'object'
+          ? body
+          : { success: false, message: 'Failed to ask about this error' }
+      );
+    }
+    return res.json({ success: true, data: body });
+  } catch (error) {
+    return res.status(502).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to ask about this error',
+    });
+  }
+});
+
 export default router;
