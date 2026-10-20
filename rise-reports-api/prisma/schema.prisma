@@ -84,3 +84,15 @@ model Task {
   @@index([status])
   @@index([createdAt])
 }
+
+model OpsAiConversation {
+  id        String   @id @default(uuid())
+  asset     String
+  logId     String
+  messages  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([asset, logId])
+  @@index([asset])
+}

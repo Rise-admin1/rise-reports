@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { Router } from 'express';
 import { coachAcademFetch } from '../services/coachAcadem.js';
+import { askAboutLog, attachAiMessages } from '../services/opsAi.js';
 
 const router = Router();
 const TOKEN_TTL_SEC = 8 * 60 * 60;
@@ -163,7 +164,8 @@ router.get('/assets/coach-academ/logs', requireOps, async (req, res) => {
           : { success: false, message: 'Failed to load Coach Academ logs' }
       );
     }
-    return res.json({ success: true, data: body });
+    const logs = await attachAiMessages('coach-academ', Array.isArray(body?.logs) ? body.logs : []);
+    return res.json({ success: true, data: { ...body, logs } });
   } catch (error) {
     return res.status(502).json({
       success: false,
@@ -175,24 +177,26 @@ router.get('/assets/coach-academ/logs', requireOps, async (req, res) => {
 router.post('/assets/coach-academ/logs/:logId/ask', requireOps, async (req, res) => {
   try {
     const response = await coachAcademFetch(
-      `/admin/request-logs/${encodeURIComponent(req.params.logId)}/ask`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: req.body?.message || '' }),
-      }
+      `/admin/request-logs/${encodeURIComponent(req.params.logId)}`
     );
-    const body = await response.json().catch(() => null);
-    if (!response.ok) {
-      return res.status(response.status).json(
-        body && typeof body === 'object'
-          ? body
-          : { success: false, message: 'Failed to ask about this error' }
+    const log = await response.json().catch(() => null);
+    if (!response.ok || !log?.id) {
+      return res.status(response.status === 404 ? 404 : 502).json(
+        log && typeof log === 'object' && log.message
+          ? log
+          : { success: false, message: 'Failed to load this error' }
       );
     }
-    return res.json({ success: true, data: body });
+    const aiMessages = await askAboutLog({
+      asset: 'coach-academ',
+      assetName: 'Coach Academ',
+      log,
+      message: req.body?.message || '',
+    });
+    return res.json({ success: true, data: { aiMessages } });
   } catch (error) {
-    return res.status(502).json({
+    const status = error?.status || 502;
+    return res.status(status).json({
       success: false,
       message: error instanceof Error ? error.message : 'Failed to ask about this error',
     });
