@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { Router } from 'express';
 import { coachAcademFetch } from '../services/coachAcadem.js';
 import { veloFetch } from '../services/velo.js';
+import { safariBooksFetch } from '../services/safariBooks.js';
 import { askAboutLog, attachAiMessages } from '../services/opsAi.js';
 
 const router = Router();
@@ -146,6 +147,7 @@ router.get('/assets', requireOps, (_req, res) => {
     data: [
       { id: 'coach-academ', name: 'Coach Academ' },
       { id: 'velo', name: 'Velo' },
+      { id: 'safari-books', name: 'Safari Books' },
     ],
   });
 });
@@ -251,6 +253,63 @@ router.post('/assets/velo/logs/:logId/ask', requireOps, async (req, res) => {
     const aiMessages = await askAboutLog({
       asset: 'velo',
       assetName: 'Velo',
+      log,
+      message: req.body?.message || '',
+    });
+    return res.json({ success: true, data: { aiMessages } });
+  } catch (error) {
+    const status = error?.status || 502;
+    return res.status(status).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to ask about this error',
+    });
+  }
+});
+
+router.get('/assets/safari-books/logs', requireOps, async (req, res) => {
+  const params = new URLSearchParams();
+  for (const key of ['page', 'pageSize', 'outcome', 'q']) {
+    const value = req.query[key];
+    if (value === undefined || value === null || value === '') continue;
+    params.set(key, String(value));
+  }
+  const query = params.toString();
+  try {
+    const response = await safariBooksFetch(`/admin/request-logs${query ? `?${query}` : ''}`);
+    const body = await response.json().catch(() => null);
+    if (!response.ok) {
+      return res.status(response.status).json(
+        body && typeof body === 'object'
+          ? body
+          : { success: false, message: 'Failed to load Safari Books logs' }
+      );
+    }
+    const logs = await attachAiMessages('safari-books', Array.isArray(body?.logs) ? body.logs : []);
+    return res.json({ success: true, data: { ...body, logs } });
+  } catch (error) {
+    return res.status(502).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to load Safari Books logs',
+    });
+  }
+});
+
+router.post('/assets/safari-books/logs/:logId/ask', requireOps, async (req, res) => {
+  try {
+    const response = await safariBooksFetch(
+      `/admin/request-logs/${encodeURIComponent(req.params.logId)}`
+    );
+    const log = await response.json().catch(() => null);
+    if (!response.ok || !log?.id) {
+      return res.status(response.status === 404 ? 404 : 502).json(
+        log && typeof log === 'object' && log.message
+          ? log
+          : { success: false, message: 'Failed to load this error' }
+      );
+    }
+    const aiMessages = await askAboutLog({
+      asset: 'safari-books',
+      assetName: 'Safari Books',
       log,
       message: req.body?.message || '',
     });

@@ -50,6 +50,21 @@ const ROUTE_NOTES = {
     ['/api/rise', 'RISE integration calls.'],
     ['/api/s3', 'File uploads.'],
   ].sort((a, b) => b[0].length - a[0].length),
+  'safari-books': [
+    ['/api/auth/web-admin-login', 'Signs in a Safari Books web admin.'],
+    ['/api/auth/forgot-password', 'Sends a password reset email.'],
+    ['/api/auth/reset-password', 'Sets a new password from a reset token.'],
+    ['/api/auth/verify', 'Confirms an email verification link.'],
+    ['/api/auth/register', 'Creates a Safari Books account.'],
+    ['/api/auth/login', 'Signs in a listener or publisher.'],
+    ['/api/auth/admin', 'Signs in an admin from the app.'],
+    ['/api/auth', 'Account, profile, and push-token actions.'],
+    ['/api/publisher', 'Publisher books and submissions.'],
+    ['/api/listeners', 'Listener library actions.'],
+    ['/api/library', 'Saved books and listening.'],
+    ['/api/admin', 'Safari Books admin lists and publisher review.'],
+    ['/api/s3', 'File uploads.'],
+  ].sort((a, b) => b[0].length - a[0].length),
 };
 
 const SERVER_NOTES = {
@@ -72,6 +87,12 @@ const SERVER_NOTES = {
     'These rows are failed HTTP calls only, status 400 and above, kept for 14 days. GET /health is not logged. Nothing is emailed because a row was logged. The ops page reads them through rise-reports-api.',
     'A signed-in caller has a JWT with id, email, and role. Missing Authorization is 401 "You are not authenticated!". A bad signature is 403 "Token is not valid". Admin lists require role SUPERADMIN, otherwise 403 "Super admin access required".',
     'Register, login, forgot-password, reset-code, and reset-password put the email in the request body. Other signed-in calls use the email on the token. Passwords and reset codes are stored as [redacted].',
+  ].join(' '),
+  'safari-books': [
+    'Safari Books is an Express API with MySQL through Prisma. Mail is Resend. Files use S3. Audiobook audio is generated from uploaded books.',
+    'These rows are failed HTTP calls only, status 400 and above, kept for 14 days. GET /health is not logged. Nothing is emailed because a row was logged. The ops page reads them through rise-reports-api.',
+    'A signed-in caller has a JWT with userId, email, and role. Missing Authorization is 401 "You are not authenticated!". A bad signature is 403 "Token is not valid". Admin lists require role ADMIN, otherwise 403 "You are not authorized to access this resource".',
+    'Register, login, admin login, forgot-password, and reset-password put the email in the request body. Other signed-in calls use the email on the token. The verification link token is removed from the stored path. Passwords and reset codes are stored as [redacted].',
   ].join(' '),
 };
 
