@@ -2159,6 +2159,7 @@ export async function deleteAvailabilitySetting(id: string): Promise<{ success: 
 export async function grantSessionCredits(payload: {
   email: string;
   sessions: number;
+  alreadyFulfilled?: number;
   appSource: SchedulingAppSource;
   notes?: string;
   sendEmail?: boolean;
@@ -2176,6 +2177,28 @@ export async function grantSessionCredits(payload: {
   } catch (error) {
     throw new Error(
       `Failed to grant session credits: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+export async function fulfillSessionCredits(payload: {
+  email: string;
+  appSource: SchedulingAppSource;
+  sessions: number;
+}): Promise<SessionCreditsResponse> {
+  try {
+    const response = await appFetch(`${SCHEDULING_API_BASE_URL}/scheduling/session-credits/fulfill`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      await parseSchedulingError(response, `HTTP error! status: ${response.status}`);
+    }
+    return (await response.json()) as SessionCreditsResponse;
+  } catch (error) {
+    throw new Error(
+      `Failed to mark sessions fulfilled: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
   }
 }

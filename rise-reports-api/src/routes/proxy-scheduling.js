@@ -33,8 +33,15 @@ router.get('/session-credits/list', (req, res) =>
 router.get('/session-credits', (req, res) =>
   proxyTo(UPSTREAM.FUNYULA, '/scheduling/session-credits', req, res)
 );
+// Grant body: { email, sessions, alreadyFulfilled, appSource, notes, sendEmail }
+// sessions is the package size added. alreadyFulfilled is how many of that size are already complete.
 router.post('/session-credits/grant', (req, res) =>
   proxyTo(UPSTREAM.FUNYULA, '/scheduling/session-credits/grant', req, res)
+);
+// Fulfill body: { email, appSource, sessions }
+// Marks that many more sessions fulfilled. Package size stays the same.
+router.post('/session-credits/fulfill', (req, res) =>
+  proxyTo(UPSTREAM.FUNYULA, '/scheduling/session-credits/fulfill', req, res)
 );
 router.get('/availability-settings', (req, res) =>
   proxyTo(UPSTREAM.FUNYULA, '/scheduling/availability-settings', req, res)

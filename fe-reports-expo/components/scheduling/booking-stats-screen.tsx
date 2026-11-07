@@ -4,7 +4,12 @@ import { Colors } from '@/constants/theme';
 import { useThemePreference } from '@/context/theme-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useRefreshControl } from '@/hooks/use-refresh-control';
-import { createSchedulingInvite, fetchSchedulingBookingStats, fetchSessionCreditsList } from '@/services/api';
+import {
+  createSchedulingInvite,
+  fetchSchedulingBookingStats,
+  fetchSessionCreditsList,
+  fulfillSessionCredits,
+} from '@/services/api';
 import type {
   SchedulingAppSource,
   SchedulingBookingStatsResponse,
@@ -331,10 +336,163 @@ function PackageCreditRow({
   );
 }
 
+function EditPackageCard({
+  email,
+  appSource,
+  total,
+  used,
+  remaining,
+  onUpdated,
+  colors,
+  cardBackground,
+  borderColor,
+}: {
+  email: string;
+  appSource: SchedulingAppSource;
+  total: number;
+  used: number;
+  remaining: number;
+  onUpdated: () => Promise<void>;
+  colors: (typeof Colors)['light'];
+  cardBackground: string;
+  borderColor: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [count, setCount] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [savedCount, setSavedCount] = useState<number | null>(null);
+
+  if (total <= 0) return null;
+
+  const handleSave = async () => {
+    const parsed = Number(count);
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      setError('Enter how many sessions to mark fulfilled');
+      setSavedCount(null);
+      return;
+    }
+    if (parsed > remaining) {
+      setError(
+        remaining === 0
+          ? 'Every session in this package is already fulfilled'
+          : `Only ${remaining} session${remaining === 1 ? '' : 's'} left to mark fulfilled`
+      );
+      setSavedCount(null);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setSavedCount(null);
+    try {
+      await fulfillSessionCredits({ email, appSource, sessions: parsed });
+      setCount('');
+      setSavedCount(parsed);
+      await onUpdated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to mark sessions fulfilled');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <View style={[styles.appointmentCard, { backgroundColor: cardBackground, borderColor }]}>
+      <ThemedText type="subtitle" style={styles.appointmentTitle}>
+        Session package
+      </ThemedText>
+      <View style={styles.metaRow}>
+        <ThemedText style={styles.metaLabel}>Package size</ThemedText>
+        <ThemedText type="defaultSemiBold">{total}</ThemedText>
+      </View>
+      <View style={styles.metaRow}>
+        <ThemedText style={styles.metaLabel}>Fulfilled</ThemedText>
+        <ThemedText type="defaultSemiBold">{used}</ThemedText>
+      </View>
+      <View style={styles.metaRow}>
+        <ThemedText style={styles.metaLabel}>Left</ThemedText>
+        <ThemedText type="defaultSemiBold">{remaining}</ThemedText>
+      </View>
+
+      {!open ? (
+        <TouchableOpacity
+          style={[styles.createButton, { backgroundColor: colors.tint }]}
+          onPress={() => {
+            setOpen(true);
+            setError(null);
+            setSavedCount(null);
+          }}
+          accessibilityLabel="Edit session package">
+          <MaterialIcons name="edit" size={20} color="#fff" />
+          <ThemedText style={styles.createButtonText}>Edit package</ThemedText>
+        </TouchableOpacity>
+      ) : (
+        <>
+          <ThemedText style={styles.appointmentHint}>
+            Mark more of this package as fulfilled. The package size stays the same, and sessions left
+            drop by the number you mark.
+          </ThemedText>
+          <ThemedText type="defaultSemiBold" style={styles.label}>
+            Sessions to mark fulfilled
+          </ThemedText>
+          <TextInput
+            value={count}
+            onChangeText={setCount}
+            placeholder="0"
+            placeholderTextColor={colors.icon}
+            keyboardType="number-pad"
+            style={[
+              styles.emailInput,
+              { color: colors.text, borderColor, backgroundColor: colors.background },
+            ]}
+          />
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              style={[styles.actionButton, { borderColor, backgroundColor: colors.buttonSecondary }]}
+              onPress={() => {
+                setOpen(false);
+                setCount('');
+                setError(null);
+              }}
+              disabled={loading}
+              accessibilityLabel="Cancel package edit">
+              <ThemedText style={[styles.actionButtonText, { color: colors.text }]}>Cancel</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, { borderColor: colors.tint, backgroundColor: colors.tint, opacity: loading ? 0.7 : 1 }]}
+              onPress={handleSave}
+              disabled={loading}
+              accessibilityLabel="Save fulfilled sessions">
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <ThemedText style={[styles.actionButtonText, { color: '#fff' }]}>Save</ThemedText>
+              )}
+            </TouchableOpacity>
+          </View>
+          {error ? (
+            <View style={[styles.inviteError, { backgroundColor: colors.errorMuted, borderColor: colors.error }]}>
+              <MaterialIcons name="error-outline" size={20} color={colors.errorText} />
+              <ThemedText style={[styles.inviteErrorText, { color: colors.errorText }]}>{error}</ThemedText>
+            </View>
+          ) : null}
+          {savedCount !== null ? (
+            <ThemedText style={styles.typeHint}>
+              Marked {savedCount} session{savedCount === 1 ? '' : 's'} fulfilled.
+            </ThemedText>
+          ) : null}
+        </>
+      )}
+    </View>
+  );
+}
+
 function BookingStatsDetail({
   stats,
   searchedEmail,
   appSource,
+  onPackageUpdated,
   colors,
   cardBackground,
   borderColor,
@@ -342,6 +500,7 @@ function BookingStatsDetail({
   stats: SchedulingBookingStatsResponse;
   searchedEmail: string;
   appSource: SchedulingAppSource;
+  onPackageUpdated: () => Promise<void>;
   colors: (typeof Colors)['light'];
   cardBackground: string;
   borderColor: string;
@@ -416,6 +575,19 @@ function BookingStatsDetail({
           borderColor={borderColor}
         />
       </View>
+
+      <EditPackageCard
+        key={searchedEmail}
+        email={searchedEmail}
+        appSource={appSource}
+        total={stats.packageSessionsTotal}
+        used={stats.packageSessionsUsed}
+        remaining={stats.packageSessionsLeft}
+        onUpdated={onPackageUpdated}
+        colors={colors}
+        cardBackground={cardBackground}
+        borderColor={borderColor}
+      />
 
       <View style={[styles.timelineCard, { backgroundColor: cardBackground, borderColor }]}>
         <ThemedText type="subtitle" style={styles.timelineTitle}>
@@ -687,6 +859,9 @@ export default function BookingStatsScreen({ appSource }: { appSource: Schedulin
               stats={stats}
               searchedEmail={searchedEmail}
               appSource={appSource}
+              onPackageUpdated={async () => {
+                await loadStatsForEmail(searchedEmail);
+              }}
               colors={colors}
               cardBackground={cardBackground}
               borderColor={borderColor}

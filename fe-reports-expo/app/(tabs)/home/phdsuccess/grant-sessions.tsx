@@ -38,6 +38,7 @@ export default function GrantSessionsScreen() {
 
   const [email, setEmail] = useState('');
   const [sessions, setSessions] = useState('');
+  const [fulfilled, setFulfilled] = useState('');
   const [notes, setNotes] = useState('');
   const [sendEmail, setSendEmail] = useState(true);
   const [result, setResult] = useState<GrantSessionCreditsResponse | null>(null);
@@ -82,13 +83,22 @@ export default function GrantSessionsScreen() {
   const handleGrant = async () => {
     const trimmedEmail = email.trim();
     const parsedSessions = Number(sessions);
+    const parsedFulfilled = fulfilled.trim() === '' ? 0 : Number(fulfilled);
 
     if (!trimmedEmail) {
       setError('Please enter an email address');
       return;
     }
     if (!Number.isInteger(parsedSessions) || parsedSessions < SESSION_MIN) {
-      setError(`Sessions must be a whole number of at least ${SESSION_MIN}`);
+      setError(`Package size must be a whole number of at least ${SESSION_MIN}`);
+      return;
+    }
+    if (!Number.isInteger(parsedFulfilled) || parsedFulfilled < 0) {
+      setError('Already fulfilled must be a whole number of 0 or more');
+      return;
+    }
+    if (parsedFulfilled > parsedSessions) {
+      setError('Already fulfilled cannot be larger than the package size');
       return;
     }
 
@@ -99,6 +109,7 @@ export default function GrantSessionsScreen() {
       const data = await grantSessionCredits({
         email: trimmedEmail,
         sessions: parsedSessions,
+        alreadyFulfilled: parsedFulfilled,
         appSource: 'phd-success',
         notes: notes.trim() || undefined,
         sendEmail,
@@ -138,6 +149,15 @@ export default function GrantSessionsScreen() {
     }
     await Linking.openURL(`https://wa.me/?text=${encodeURIComponent(message)}`);
   };
+
+  const parsedPackageSize = Number(sessions);
+  const parsedAlreadyFulfilled = fulfilled.trim() === '' ? 0 : Number(fulfilled);
+  const packagePreviewReady =
+    Number.isInteger(parsedPackageSize) &&
+    parsedPackageSize >= SESSION_MIN &&
+    Number.isInteger(parsedAlreadyFulfilled) &&
+    parsedAlreadyFulfilled >= 0 &&
+    parsedAlreadyFulfilled <= parsedPackageSize;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
@@ -181,8 +201,9 @@ export default function GrantSessionsScreen() {
               Grant session package
             </ThemedText>
             <ThemedText style={styles.formHint}>
-              Add complimentary sessions for a client who paid externally. Sessions stack on repeat
-              grants to the same email. Cancelled meetings do not restore credits.
+              Enter the full package size. Already fulfilled marks sessions in that package as
+              complete, and sessions left are the size minus fulfilled. A repeat grant adds another
+              block onto the same email. Cancelled meetings do not restore credits.
             </ThemedText>
 
             <ThemedText type="defaultSemiBold" style={styles.label}>
@@ -223,19 +244,20 @@ export default function GrantSessionsScreen() {
               <View style={[styles.balanceBox, { borderColor, backgroundColor: colors.background }]}>
                 <ThemedText type="defaultSemiBold">Current balance</ThemedText>
                 <ThemedText style={styles.balanceValue}>
-                  {existingCredit.credit.remainingSessions} of {existingCredit.credit.totalSessions}{' '}
-                  sessions remaining
+                  {existingCredit.credit.totalSessions} package size ·{' '}
+                  {existingCredit.credit.usedSessions} fulfilled ·{' '}
+                  {existingCredit.credit.remainingSessions} left
                 </ThemedText>
               </View>
             )}
 
             <ThemedText type="defaultSemiBold" style={styles.label}>
-              Sessions to add
+              Package size
             </ThemedText>
             <TextInput
               value={sessions}
               onChangeText={setSessions}
-              placeholder="20"
+              placeholder="36"
               placeholderTextColor={colors.icon}
               keyboardType="number-pad"
               style={[
@@ -243,6 +265,26 @@ export default function GrantSessionsScreen() {
                 { color: colors.text, borderColor, backgroundColor: colors.background },
               ]}
             />
+
+            <ThemedText type="defaultSemiBold" style={styles.label}>
+              Already fulfilled
+            </ThemedText>
+            <TextInput
+              value={fulfilled}
+              onChangeText={setFulfilled}
+              placeholder="0"
+              placeholderTextColor={colors.icon}
+              keyboardType="number-pad"
+              style={[
+                styles.input,
+                { color: colors.text, borderColor, backgroundColor: colors.background },
+              ]}
+            />
+            {packagePreviewReady ? (
+              <ThemedText style={styles.balanceValue}>
+                {parsedPackageSize - parsedAlreadyFulfilled} sessions left
+              </ThemedText>
+            ) : null}
 
             <ThemedText type="defaultSemiBold" style={styles.label}>
               Notes (optional)
@@ -307,8 +349,12 @@ export default function GrantSessionsScreen() {
                 <ThemedText type="defaultSemiBold">{result.credit.email}</ThemedText>
               </View>
               <View style={styles.metaRow}>
-                <ThemedText style={styles.metaLabel}>Added</ThemedText>
-                <ThemedText type="defaultSemiBold">{sessions} sessions</ThemedText>
+                <ThemedText style={styles.metaLabel}>Package size</ThemedText>
+                <ThemedText type="defaultSemiBold">{sessions || '0'}</ThemedText>
+              </View>
+              <View style={styles.metaRow}>
+                <ThemedText style={styles.metaLabel}>Already fulfilled</ThemedText>
+                <ThemedText type="defaultSemiBold">{fulfilled.trim() === '' ? '0' : fulfilled}</ThemedText>
               </View>
               <View style={styles.metaRow}>
                 <ThemedText style={styles.metaLabel}>Remaining</ThemedText>

@@ -259,7 +259,7 @@ export default function RiseScreen() {
                       Grant Session Package
                     </ThemedText>
                     <ThemedText style={styles.riseReportCardDesc}>
-                      Add sessions for external payments and email a booking link
+                      Set the package size, mark sessions already fulfilled, and email a booking link
                     </ThemedText>
                   </View>
                   <MaterialIcons name="chevron-right" size={24} color={colors.icon} />
