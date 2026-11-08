@@ -128,7 +128,7 @@ export default function GrantSessionsScreen() {
     }
   };
 
-  const shareUrl = result?.invite.shareUrl ?? existingCredit?.credit.shareUrl ?? null;
+  const shareUrl = result?.invite?.shareUrl ?? existingCredit?.credit.shareUrl ?? null;
 
   const handleCopy = async () => {
     if (!shareUrl) return;
@@ -350,17 +350,15 @@ export default function GrantSessionsScreen() {
               </View>
               <View style={styles.metaRow}>
                 <ThemedText style={styles.metaLabel}>Package size</ThemedText>
-                <ThemedText type="defaultSemiBold">{sessions || '0'}</ThemedText>
+                <ThemedText type="defaultSemiBold">{result.credit.totalSessions}</ThemedText>
               </View>
               <View style={styles.metaRow}>
-                <ThemedText style={styles.metaLabel}>Already fulfilled</ThemedText>
-                <ThemedText type="defaultSemiBold">{fulfilled.trim() === '' ? '0' : fulfilled}</ThemedText>
+                <ThemedText style={styles.metaLabel}>Fulfilled</ThemedText>
+                <ThemedText type="defaultSemiBold">{result.credit.usedSessions}</ThemedText>
               </View>
               <View style={styles.metaRow}>
-                <ThemedText style={styles.metaLabel}>Remaining</ThemedText>
-                <ThemedText type="defaultSemiBold">
-                  {result.credit.remainingSessions} of {result.credit.totalSessions}
-                </ThemedText>
+                <ThemedText style={styles.metaLabel}>Left</ThemedText>
+                <ThemedText type="defaultSemiBold">{result.credit.remainingSessions}</ThemedText>
               </View>
               <View style={styles.metaRow}>
                 <ThemedText style={styles.metaLabel}>Email sent</ThemedText>

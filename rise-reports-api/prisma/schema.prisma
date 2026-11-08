@@ -85,6 +85,20 @@ model Task {
   @@index([createdAt])
 }
 
+model SessionPackage {
+  id                  String   @id @default(uuid())
+  email               String
+  appSource           String
+  totalSessions       Int
+  manualFulfilled     Int
+  funyulaUsedBaseline Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([email, appSource])
+  @@index([appSource])
+}
+
 model OpsAiConversation {
   id        String   @id @default(uuid())
   asset     String

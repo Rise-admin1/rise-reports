@@ -8,7 +8,7 @@ import {
   createSchedulingInvite,
   fetchSchedulingBookingStats,
   fetchSessionCreditsList,
-  fulfillSessionCredits,
+  updateSessionPackage,
 } from '@/services/api';
 import type {
   SchedulingAppSource,
@@ -341,7 +341,6 @@ function EditPackageCard({
   appSource,
   total,
   used,
-  remaining,
   onUpdated,
   colors,
   cardBackground,
@@ -351,47 +350,48 @@ function EditPackageCard({
   appSource: SchedulingAppSource;
   total: number;
   used: number;
-  remaining: number;
   onUpdated: () => Promise<void>;
   colors: (typeof Colors)['light'];
   cardBackground: string;
   borderColor: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [count, setCount] = useState('');
+  const [packageSize, setPackageSize] = useState(String(total));
+  const [fulfilled, setFulfilled] = useState(String(used));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [savedCount, setSavedCount] = useState<number | null>(null);
+  const [saved, setSaved] = useState(false);
 
-  if (total <= 0) return null;
+  const parsedSize = Number(packageSize);
+  const parsedFulfilled = fulfilled.trim() === '' ? 0 : Number(fulfilled);
+  const previewReady =
+    Number.isInteger(parsedSize) &&
+    parsedSize >= 1 &&
+    Number.isInteger(parsedFulfilled) &&
+    parsedFulfilled >= 0 &&
+    parsedFulfilled <= parsedSize;
 
   const handleSave = async () => {
-    const parsed = Number(count);
-    if (!Number.isInteger(parsed) || parsed < 1) {
-      setError('Enter how many sessions to mark fulfilled');
-      setSavedCount(null);
-      return;
-    }
-    if (parsed > remaining) {
-      setError(
-        remaining === 0
-          ? 'Every session in this package is already fulfilled'
-          : `Only ${remaining} session${remaining === 1 ? '' : 's'} left to mark fulfilled`
-      );
-      setSavedCount(null);
+    if (!previewReady) {
+      setError('Package size must be at least 1, and fulfilled cannot be larger than that size');
+      setSaved(false);
       return;
     }
 
     setLoading(true);
     setError(null);
-    setSavedCount(null);
+    setSaved(false);
     try {
-      await fulfillSessionCredits({ email, appSource, sessions: parsed });
-      setCount('');
-      setSavedCount(parsed);
+      await updateSessionPackage({
+        email,
+        appSource,
+        totalSessions: parsedSize,
+        fulfilledSessions: parsedFulfilled,
+      });
+      setSaved(true);
       await onUpdated();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to mark sessions fulfilled');
+      setError(err instanceof Error ? err.message : 'Failed to update session package');
     } finally {
       setLoading(false);
     }
@@ -412,16 +412,18 @@ function EditPackageCard({
       </View>
       <View style={styles.metaRow}>
         <ThemedText style={styles.metaLabel}>Left</ThemedText>
-        <ThemedText type="defaultSemiBold">{remaining}</ThemedText>
+        <ThemedText type="defaultSemiBold">{Math.max(0, total - used)}</ThemedText>
       </View>
 
       {!open ? (
         <TouchableOpacity
           style={[styles.createButton, { backgroundColor: colors.tint }]}
           onPress={() => {
+            setPackageSize(total > 0 ? String(total) : '');
+            setFulfilled(String(used));
             setOpen(true);
             setError(null);
-            setSavedCount(null);
+            setSaved(false);
           }}
           accessibilityLabel="Edit session package">
           <MaterialIcons name="edit" size={20} color="#fff" />
@@ -430,16 +432,16 @@ function EditPackageCard({
       ) : (
         <>
           <ThemedText style={styles.appointmentHint}>
-            Mark more of this package as fulfilled. The package size stays the same, and sessions left
-            drop by the number you mark.
+            Set the package size and how many sessions are already fulfilled. Sessions left are the
+            size minus fulfilled. This updates a package that already exists and one you just created.
           </ThemedText>
           <ThemedText type="defaultSemiBold" style={styles.label}>
-            Sessions to mark fulfilled
+            Package size
           </ThemedText>
           <TextInput
-            value={count}
-            onChangeText={setCount}
-            placeholder="0"
+            value={packageSize}
+            onChangeText={setPackageSize}
+            placeholder="12"
             placeholderTextColor={colors.icon}
             keyboardType="number-pad"
             style={[
@@ -447,12 +449,28 @@ function EditPackageCard({
               { color: colors.text, borderColor, backgroundColor: colors.background },
             ]}
           />
+          <ThemedText type="defaultSemiBold" style={styles.label}>
+            Fulfilled
+          </ThemedText>
+          <TextInput
+            value={fulfilled}
+            onChangeText={setFulfilled}
+            placeholder="10"
+            placeholderTextColor={colors.icon}
+            keyboardType="number-pad"
+            style={[
+              styles.emailInput,
+              { color: colors.text, borderColor, backgroundColor: colors.background },
+            ]}
+          />
+          {previewReady ? (
+            <ThemedText style={styles.typeHint}>{parsedSize - parsedFulfilled} sessions left</ThemedText>
+          ) : null}
           <View style={styles.actionRow}>
             <TouchableOpacity
               style={[styles.actionButton, { borderColor, backgroundColor: colors.buttonSecondary }]}
               onPress={() => {
                 setOpen(false);
-                setCount('');
                 setError(null);
               }}
               disabled={loading}
@@ -463,7 +481,7 @@ function EditPackageCard({
               style={[styles.actionButton, { borderColor: colors.tint, backgroundColor: colors.tint, opacity: loading ? 0.7 : 1 }]}
               onPress={handleSave}
               disabled={loading}
-              accessibilityLabel="Save fulfilled sessions">
+              accessibilityLabel="Save session package">
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
@@ -477,10 +495,8 @@ function EditPackageCard({
               <ThemedText style={[styles.inviteErrorText, { color: colors.errorText }]}>{error}</ThemedText>
             </View>
           ) : null}
-          {savedCount !== null ? (
-            <ThemedText style={styles.typeHint}>
-              Marked {savedCount} session{savedCount === 1 ? '' : 's'} fulfilled.
-            </ThemedText>
+          {saved ? (
+            <ThemedText style={styles.typeHint}>Package updated.</ThemedText>
           ) : null}
         </>
       )}
@@ -582,7 +598,6 @@ function BookingStatsDetail({
         appSource={appSource}
         total={stats.packageSessionsTotal}
         used={stats.packageSessionsUsed}
-        remaining={stats.packageSessionsLeft}
         onUpdated={onPackageUpdated}
         colors={colors}
         cardBackground={cardBackground}

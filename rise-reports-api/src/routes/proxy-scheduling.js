@@ -1,5 +1,14 @@
 import { Router } from 'express';
 import { requireAuth, requirePermission } from '../middleware/auth.js';
+import {
+  applyGrant,
+  isMissingPackageTable,
+  overlayBookingStats,
+  overlayCreditList,
+  overlayCreditResponse,
+  readScheduling,
+  setPackage,
+} from '../services/sessionPackages.js';
 import { proxyTo, UPSTREAM } from '../services/upstream.js';
 
 const router = Router();
@@ -24,25 +33,76 @@ function schedulingPermission(req, res, next) {
 router.use(requireAuth, schedulingPermission);
 
 router.get('/metrics', (req, res) => proxyTo(UPSTREAM.FUNYULA, '/scheduling/metrics', req, res));
-router.get('/booking-stats', (req, res) =>
-  proxyTo(UPSTREAM.FUNYULA, '/scheduling/booking-stats', req, res)
-);
-router.get('/session-credits/list', (req, res) =>
-  proxyTo(UPSTREAM.FUNYULA, '/scheduling/session-credits/list', req, res)
-);
-router.get('/session-credits', (req, res) =>
-  proxyTo(UPSTREAM.FUNYULA, '/scheduling/session-credits', req, res)
-);
-// Grant body: { email, sessions, alreadyFulfilled, appSource, notes, sendEmail }
-// sessions is the package size added. alreadyFulfilled is how many of that size are already complete.
-router.post('/session-credits/grant', (req, res) =>
-  proxyTo(UPSTREAM.FUNYULA, '/scheduling/session-credits/grant', req, res)
-);
-// Fulfill body: { email, appSource, sessions }
-// Marks that many more sessions fulfilled. Package size stays the same.
-router.post('/session-credits/fulfill', (req, res) =>
-  proxyTo(UPSTREAM.FUNYULA, '/scheduling/session-credits/fulfill', req, res)
-);
+router.get('/booking-stats', async (req, res) => {
+  try {
+    const result = await readScheduling('/scheduling/booking-stats', req.query);
+    if (!result.ok) return res.status(result.status).json(result.json);
+    const body = await overlayBookingStats(result.json, req.query.email, req.query.appSource);
+    return res.json(body);
+  } catch (error) {
+    if (isMissingPackageTable(error)) {
+      return proxyTo(UPSTREAM.FUNYULA, '/scheduling/booking-stats', req, res);
+    }
+    return res.status(error.status || 500).json({ message: error.message });
+  }
+});
+router.get('/session-credits/list', async (req, res) => {
+  try {
+    const result = await readScheduling('/scheduling/session-credits/list', req.query);
+    if (!result.ok) return res.status(result.status).json(result.json);
+    const body = await overlayCreditList(result.json, req.query.appSource);
+    return res.json(body);
+  } catch (error) {
+    if (isMissingPackageTable(error)) {
+      return proxyTo(UPSTREAM.FUNYULA, '/scheduling/session-credits/list', req, res);
+    }
+    return res.status(error.status || 500).json({ message: error.message });
+  }
+});
+router.get('/session-credits', async (req, res) => {
+  try {
+    const result = await readScheduling('/scheduling/session-credits', req.query);
+    if (!result.ok) return res.status(result.status).json(result.json);
+    const body = await overlayCreditResponse(result.json, req.query.email, req.query.appSource);
+    return res.json(body);
+  } catch (error) {
+    if (isMissingPackageTable(error)) {
+      return proxyTo(UPSTREAM.FUNYULA, '/scheduling/session-credits', req, res);
+    }
+    return res.status(error.status || 500).json({ message: error.message });
+  }
+});
+router.post('/session-credits/grant', async (req, res) => {
+  try {
+    const body = await applyGrant({
+      email: req.body?.email,
+      appSource: req.body?.appSource,
+      sessions: req.body?.sessions,
+      alreadyFulfilled: req.body?.alreadyFulfilled,
+      notes: req.body?.notes,
+      sendEmail: req.body?.sendEmail,
+    });
+    return res.json(body);
+  } catch (error) {
+    if (isMissingPackageTable(error)) {
+      return proxyTo(UPSTREAM.FUNYULA, '/scheduling/session-credits/grant', req, res);
+    }
+    return res.status(error.status || 500).json({ message: error.message });
+  }
+});
+router.post('/session-credits/update', async (req, res) => {
+  try {
+    const body = await setPackage({
+      email: req.body?.email,
+      appSource: req.body?.appSource,
+      totalSessions: req.body?.totalSessions,
+      fulfilledSessions: req.body?.fulfilledSessions,
+    });
+    return res.json(body);
+  } catch (error) {
+    return res.status(error.status || 500).json({ message: error.message });
+  }
+});
 router.get('/availability-settings', (req, res) =>
   proxyTo(UPSTREAM.FUNYULA, '/scheduling/availability-settings', req, res)
 );

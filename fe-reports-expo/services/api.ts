@@ -2181,13 +2181,14 @@ export async function grantSessionCredits(payload: {
   }
 }
 
-export async function fulfillSessionCredits(payload: {
+export async function updateSessionPackage(payload: {
   email: string;
   appSource: SchedulingAppSource;
-  sessions: number;
+  totalSessions: number;
+  fulfilledSessions: number;
 }): Promise<SessionCreditsResponse> {
   try {
-    const response = await appFetch(`${SCHEDULING_API_BASE_URL}/scheduling/session-credits/fulfill`, {
+    const response = await appFetch(`${SCHEDULING_API_BASE_URL}/scheduling/session-credits/update`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -2198,7 +2199,7 @@ export async function fulfillSessionCredits(payload: {
     return (await response.json()) as SessionCreditsResponse;
   } catch (error) {
     throw new Error(
-      `Failed to mark sessions fulfilled: ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Failed to update session package: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
   }
 }

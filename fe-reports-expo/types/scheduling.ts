@@ -97,7 +97,7 @@ export interface SchedulingSessionCredit {
 
 export interface GrantSessionCreditsResponse {
   credit: SchedulingSessionCredit;
-  invite: SchedulingInvite;
+  invite: SchedulingInvite | null;
   emailSent: boolean;
   emailSkipped: boolean;
 }
